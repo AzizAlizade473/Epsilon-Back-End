@@ -1,0 +1,32 @@
+import { expect, it } from 'vitest';
+import * as c from '../../../Epsilon-Front-End/src/services/contracts/index.ts';
+import { seed } from '../../src/db/seed-data.js';
+import { setup } from '../helpers.js';
+
+it('responses parse with the app schemas', { timeout: 120_000 }, async () => {
+  const t = await setup();
+  await seed(t.db, t.clock.now);
+  const auth = await t.signInPhone();
+  c.authResultSchema.parse(auth);
+  const token = auth.session.accessToken;
+  const g = (p: string) => t.call('GET', p, { token }).then((r) => r.body);
+  c.configSchema.parse(await g('/config'));
+  c.userSchema.parse(await g('/me'));
+  const page = c.restaurantPageSchema.parse(await g('/restaurants?search=bistro'));
+  expect(page.items).toHaveLength(1);
+  c.restaurantSchema.parse(await g(`/restaurants/${page.items[0]!.id}`));
+  c.profileUpdateResultSchema.parse((await t.call('PATCH', '/me', { token, body: { firstName: 'A' } })).body);
+  const receipt = c.receiptSchema.parse((await t.call('POST', '/receipts/resolve', { token, body: { kind: 'qr', value: 'DEMO-0003' } })).body);
+  c.receiptSchema.parse(await g(`/receipts/${receipt.id}`));
+  c.feedbackResultSchema.parse((await t.call('POST', '/feedback', { token, body: { receiptItemId: receipt.items[0]!.id, rating: 5 } })).body);
+  c.paginatedSchema(c.feedbackReviewSchema).parse(await g('/feedback'));
+  c.walletSchema.parse(await g('/wallet'));
+  const txs = c.paginatedSchema(c.walletTransactionSchema).parse(await g('/wallet/transactions'));
+  c.walletTransactionSchema.parse(await g(`/wallet/transactions/${txs.items[0]!.id}`));
+  c.notificationPreferencesSchema.parse(await g('/me/notification-settings'));
+  c.notificationPreferencesSchema.parse((await t.call('PUT', '/me/notification-settings', { token, body: { cashbackUpdates: true, partnerUpdates: false } })).body);
+  expect((await t.call('POST', '/devices', { token, body: { token: 'ExponentPushToken[x]' } })).status).toBe(204);
+  c.sessionSchema.parse((await t.call('POST', '/auth/refresh', { body: { refreshToken: auth.session.refreshToken } })).body);
+  t.advance(61_000);
+  c.otpChallengeSchema.parse((await t.call('POST', '/auth/otp/request', { body: { phone: '+994551234567' } })).body);
+});
