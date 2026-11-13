@@ -10,7 +10,8 @@
     "db:seed": "tsx --env-file=.env src/db/seed.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "test:contract": "vitest run -c test/_contract/vitest.config.mts"
+    "test:contract": "vitest run -c test/_contract/vitest.config.mts",
+    "db:studio": "drizzle-kit studio"
   },
   "license": "UNLICENSED",
   "dependencies": {

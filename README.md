@@ -57,6 +57,33 @@ code on the app's "enter code" screen.
 **OTP codes in development:** no SMS is sent. The code is printed in the
 server terminal as `[dev-sms] OTP for +994…: 123456`.
 
+## See the data (accounts, logins, wallet)
+
+```bash
+npm run db:studio
+```
+
+Open https://local.drizzle.studio in your browser. You see every table and can
+browse, filter and edit rows:
+
+| Table             | What is in it                                                 |
+| ----------------- | ------------------------------------------------------------- |
+| `users`           | One row per account: phone, email, name, birth date           |
+| `auth_identities` | How each account signs in: `phone` or `google` (+ Gmail address) |
+| `sessions`        | Logins. One row per refresh token; `revoked_at` set = logged out |
+| `ledger_entries`  | Wallet: every cashback credit                                 |
+| `feedback`        | Ratings and comments                                          |
+
+Codes and tokens are stored only as hashes, so you cannot read a password or
+OTP out of the database. That is on purpose.
+
+## Staying logged in
+
+The app keeps you logged in for 30 days (`REFRESH_TOKEN_TTL_DAYS`). It saves the
+session in the phone's secure storage, and the server swaps in a new token every
+15 minutes. You sign in again only after you log out, delete the account, wipe
+the app data, or reset the database.
+
 ## Point the app at it
 
 In `Epsilon-Front-End/.env.local`:
