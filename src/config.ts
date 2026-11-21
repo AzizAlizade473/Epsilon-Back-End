@@ -20,7 +20,8 @@ const schema = z
     CORS_ORIGINS: z.string().default(''),
     /** `console` prints OTP codes to the server log (development only). */
     SMS_PROVIDER: z.enum(['console', 'none']).default('console'),
-    MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('1.0.0'),
+    // Must not exceed the app's current version (app.json), or every install is told to update.
+    MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('0.1.0'),
     MIN_AGE: z.coerce.number().int().positive().default(16),
     REQUIRE_PHONE_VERIFICATION: flag.default(true),
     /** Fiscal receipt source. `none` until an authorised e-kassa integration exists; `fixture` = test data, never production. */
