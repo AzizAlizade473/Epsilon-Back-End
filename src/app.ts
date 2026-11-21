@@ -81,6 +81,7 @@ export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
         message: apiError.message,
         requestId: request.id,
         ...(apiError.retryAfterSeconds !== undefined ? { retryAfterSeconds: apiError.retryAfterSeconds } : {}),
+        ...(apiError.fields?.length ? { fields: apiError.fields } : {}),
       },
     });
   });

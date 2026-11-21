@@ -4,6 +4,7 @@ import type { GoogleVerifier } from './auth/google.js';
 import type { SmsSender } from './auth/sms.js';
 import type { SectorAdvisor } from './fiscal/classify.js';
 import type { FiscalProvider } from './fiscal/provider.js';
+import type { ReceiptImageReader } from './fiscal/gemini.js';
 
 export type Deps = {
   db: Db;
@@ -15,6 +16,8 @@ export type Deps = {
   /** Fiscal receipt source and optional AI sector advisor; safe "unavailable"/"off" defaults. */
   fiscal?: FiscalProvider;
   advisor?: SectorAdvisor;
+  /** Reads customer-supplied receipt images (Gemini); off unless configured. */
+  reader?: ReceiptImageReader;
 };
 
 export type AuthContext = { userId: string; familyId: string; authenticatedAt: Date };

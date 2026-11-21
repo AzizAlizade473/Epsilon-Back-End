@@ -14,7 +14,7 @@ import { ApiError } from '../src/errors.js';
 /** Fresh in-memory Postgres + app per test file. Clock and SMS are controllable. */
 export async function setup(
   overrides: Record<string, string> = {},
-  extra: { fiscal?: Deps['fiscal']; advisor?: Deps['advisor'] } = {},
+  extra: { fiscal?: Deps['fiscal']; advisor?: Deps['advisor']; reader?: Deps['reader'] } = {},
 ) {
   const client = new PGlite();
   const db = drizzle(client, { schema }) as unknown as Db;

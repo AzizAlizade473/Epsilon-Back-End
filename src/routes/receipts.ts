@@ -12,7 +12,9 @@ import { loadUser, receiptView } from '../lib/views.js';
 import { noAdvisor } from '../fiscal/classify.js';
 import { unavailableProvider } from '../fiscal/provider.js';
 import { parseFiscalQr, QrError } from '../fiscal/qr.js';
-import { obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
+import { importFiscalFromImage, obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
+import { ImageReadError, type ReceiptImageReader } from '../fiscal/gemini.js';
+import { validateImage } from '../fiscal/image.js';
 
 const resolveBody = z
   .object({
@@ -20,6 +22,23 @@ const resolveBody = z
     value: z.string().min(1).max(2048).refine((v) => v.trim().length > 0),
   })
   .strict();
+
+const imageBody = z.object({ mime: z.enum(['image/jpeg', 'image/png', 'image/webp']), data: z.string().min(100) }).strict();
+const importBody = z
+  .object({
+    /** The scanned fiscal QR text. */
+    qr: z.string().min(1).max(2048),
+    source: z.enum(['official_page', 'paper_photo']),
+    /** One image, or up to 4 consecutive parts of a long receipt. */
+    images: z.array(imageBody).min(1).max(4),
+  })
+  .strict();
+
+const disabledReader: ReceiptImageReader = {
+  read: async () => {
+    throw new ImageReadError('disabled');
+  },
+};
 
 /** The opaque reference printed on the bill. Only its SHA-256 is stored, and the
  * QR carries nothing else the server trusts (no amount, no restaurant). */
@@ -69,6 +88,37 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
     });
     return reply.code(out.status).send(out.body);
   });
+
+  /**
+   * Customer-assisted import when no authorised provider has the receipt: the
+   * customer supplies the official e-kassa receipt image (saved from the official
+   * page) or a photo of the paper receipt. Always starts from the scanned QR.
+   */
+  app.post(
+    '/receipts/fiscal/import',
+    { bodyLimit: 24 * 1024 * 1024, config: { auth: true, rateLimit: { max: 6, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      const auth = request.auth!;
+      const body = parse(importBody, request.body);
+      let ref: ReturnType<typeof parseFiscalQr>;
+      try {
+        ref = parseFiscalQr(body.qr);
+      } catch (error) {
+        if (error instanceof QrError) throw new ApiError(422, 'RECEIPT_UNSUPPORTED', 'Unsupported receipt code');
+        throw error;
+      }
+      if (!ref) throw new ApiError(422, 'RECEIPT_UNSUPPORTED', 'Not an e-kassa receipt code');
+      const images = body.images.map((i) => validateImage(i.data, i.mime, deps.config.MAX_RECEIPT_IMAGE_BYTES));
+      const fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now());
+      const out = await idempotent(deps, request, auth.userId, 'receipt.import', async (tx) => {
+        const now = deps.now();
+        const purchaseId = await userCopy(tx, auth.userId, fiscal, now);
+        const user = await loadUser(tx, auth.userId);
+        return { status: 200, body: await receiptView(tx, purchaseId, user, deps.config, now) };
+      });
+      return reply.code(out.status).send(out.body);
+    },
+  );
 
   /** This account's receipts, newest first (includes scanned fiscal receipts without cashback). */
   app.get('/receipts', { config: { auth: true } }, async (request) => {

@@ -3,7 +3,7 @@ import { and, asc, count, eq } from 'drizzle-orm';
 
 import type { Config } from '../config.js';
 import type { Db, Tx } from '../db/client.js';
-import { claimedLines, eligibility } from '../fiscal/service.js';
+import { IMAGE_PROVIDERS, claimedLines, eligibility } from '../fiscal/service.js';
 import type { FiscalDocument } from '../fiscal/document.js';
 import {
   authIdentities,
@@ -147,8 +147,15 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
       ? {
           fiscal: {
             verification: {
-              // Test fixtures are never presented as government-verified.
-              status: fiscal.provider === 'fixture' ? ('test_data' as const) : ('verified' as const),
+              // Only an authorised provider is "verified"; customer images and test fixtures say what they are.
+              status:
+                fiscal.provider === 'fixture'
+                  ? ('test_data' as const)
+                  : fiscal.provider === IMAGE_PROVIDERS.official_page
+                    ? ('official_image' as const)
+                    : fiscal.provider === IMAGE_PROVIDERS.paper_photo
+                      ? ('paper_photo' as const)
+                      : ('verified' as const),
               provider: fiscal.provider,
               retrievedAt: fiscal.retrievedAt.toISOString(),
             },

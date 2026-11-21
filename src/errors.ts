@@ -16,6 +16,10 @@ export type ErrorCode =
   | 'RECEIPT_EXPIRED'
   | 'RECEIPT_SOURCE_UNAVAILABLE'
   | 'RECEIPT_VERIFICATION_FAILED'
+  | 'RECEIPT_READER_UNAVAILABLE'
+  | 'RECEIPT_READER_QUOTA'
+  | 'RECEIPT_IMAGE_INCOMPLETE'
+  | 'RECEIPT_IMAGE_MISMATCH'
   | 'FEEDBACK_ALREADY_SUBMITTED'
   | 'AGE_RESTRICTED'
   | 'VALIDATION_FAILED'
@@ -33,6 +37,8 @@ export class ApiError extends Error {
     readonly code: ErrorCode,
     message: string = code,
     readonly retryAfterSeconds?: number,
+    /** Machine-readable field names, e.g. which parts of a receipt image could not be read. */
+    readonly fields?: string[],
   ) {
     super(message);
     this.name = 'ApiError';

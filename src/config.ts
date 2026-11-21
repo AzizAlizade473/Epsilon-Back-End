@@ -28,7 +28,10 @@ const schema = z
     /** Gemini business-sector advisor. Off by default: no call is made unless this is `true`. */
     GEMINI_ENABLED: flag.default(false),
     GEMINI_API_KEY: z.string().min(10).optional(),
-    GEMINI_MODEL: z.string().min(3).default('gemini-3.5-flash-lite'),
+    GEMINI_MODEL: z.string().min(3).default('gemini-3.8-flash'),
+    /** Max Gemini requests while importing one receipt (reading includes the sector suggestion). */
+    GEMINI_MAX_CALLS_PER_RECEIPT: z.coerce.number().int().min(0).max(3).default(1),
+    MAX_RECEIPT_IMAGE_BYTES: z.coerce.number().int().positive().max(12_000_000).default(6_000_000),
     /** Application cap protecting the free-tier quota (Google's own limits apply separately). */
     GEMINI_MAX_CALLS_PER_DAY: z.coerce.number().int().min(0).max(1000).default(5),
   })

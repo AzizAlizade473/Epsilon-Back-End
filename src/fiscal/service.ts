@@ -8,6 +8,8 @@ import { sha256 } from '../lib/crypto.js';
 import { classifyMerchant, type Classification, type SectorAdvisor } from './classify.js';
 import { fiscalDocumentSchema, integrityProblems, withoutPersonal, type FiscalDocument } from './document.js';
 import type { FiscalProvider } from './provider.js';
+import { ImageReadError, type ReceiptImageReader } from './gemini.js';
+import type { ReceiptImage } from './image.js';
 import type { FiscalRef } from './qr.js';
 
 type Conn = Db | Tx;
@@ -16,6 +18,7 @@ export type FiscalRow = typeof fiscalReceipts.$inferSelect;
 /** Receipts stay ratable this long after the scan (same as partner purchases). */
 const RATING_WINDOW_MS = 30 * 24 * 3600 * 1000;
 const SOURCE_TIMEOUT_MS = 10_000;
+const READER_TIMEOUT_MS = 90_000;
 
 const identity = (ref: FiscalRef) => and(eq(fiscalReceipts.issuer, ref.issuer), eq(fiscalReceipts.fiscalId, ref.fiscalId));
 
@@ -50,14 +53,80 @@ export async function obtainFiscalReceipt(
 
   // Classification may ask the AI advisor: done before the write, outside any transaction.
   const c: Classification = await classifyMerchant(db, document, advisor);
+  return storeFiscal(db, ref, provider.name, document, lookup.raw ?? null, c, now);
+}
+
+/** Customer-supplied image sources. Never presented as government-verified. */
+export type ImageSource = 'official_page' | 'paper_photo';
+export const IMAGE_PROVIDERS: Record<ImageSource, string> = {
+  official_page: 'customer_official_image',
+  paper_photo: 'customer_paper_photo',
+};
+
+/** OCR may confuse look-alike characters (O/0, I/l): allow two, never a different length. */
+export function sameFiscalId(printed: string, known: string): boolean {
+  const a = printed.trim().toLowerCase();
+  const b = known.toLowerCase();
+  if (a.length < b.length) return false;
+  let diff = 0;
+  // A printed long-form ID starts with the 12-char Fiscal ID.
+  for (let i = 0; i < b.length; i++) if (a[i] !== b[i]) diff++;
+  return diff <= 2;
+}
+
+/**
+ * Receipt contents from a customer-supplied image (official e-kassa image or paper
+ * photo), read by the image reader. Used only when no authorised provider has the
+ * receipt; a receipt already stored is never re-read.
+ */
+export async function importFiscalFromImage(
+  db: Db,
+  ref: FiscalRef,
+  source: ImageSource,
+  images: ReceiptImage[],
+  reader: ReceiptImageReader,
+  now: Date,
+): Promise<FiscalRow> {
+  const [known] = await db.select().from(fiscalReceipts).where(identity(ref));
+  if (known) return known;
+  let reading;
+  try {
+    reading = await reader.read(images, ref.fiscalId, AbortSignal.timeout(READER_TIMEOUT_MS));
+  } catch (error) {
+    if (!(error instanceof ImageReadError)) throw error;
+    if (error.kind === 'disabled') throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt image reading is turned off');
+    if (error.kind === 'quota') throw new ApiError(503, 'RECEIPT_READER_QUOTA', 'Receipt reading limit reached for today');
+    if (error.kind === 'incomplete')
+      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, error.fields);
+    throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt could not be read, try again', 10);
+  }
+  // The printed Fiscal ID is the only link between the image and the scanned QR: required.
+  if (!reading.printedFiscalId) throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Fiscal ID not visible', undefined, ['fiscalId']);
+  if (!sameFiscalId(reading.printedFiscalId, ref.fiscalId))
+    throw new ApiError(422, 'RECEIPT_IMAGE_MISMATCH', 'The image shows a different receipt');
+  // Partner record, cache and name rules first; the reader's suggestion only as the last resort (no extra AI call).
+  const fromReading = { suggest: async () => reading.suggestion };
+  const c = await classifyMerchant(db, reading.document, fromReading);
+  return storeFiscal(db, ref, IMAGE_PROVIDERS[source], reading.document, null, c, now);
+}
+
+async function storeFiscal(
+  db: Db,
+  ref: FiscalRef,
+  providerName: string,
+  document: FiscalDocument,
+  raw: unknown,
+  c: Classification,
+  now: Date,
+): Promise<FiscalRow> {
   await db
     .insert(fiscalReceipts)
     .values({
       issuer: ref.issuer,
       fiscalId: ref.fiscalId,
-      provider: provider.name,
+      provider: providerName,
       document,
-      raw: lookup.raw ?? null,
+      raw: raw ?? null,
       merchantVoen: document.merchant.voen,
       objectCode: document.merchant.objectCode,
       sector: c.sector,
@@ -123,7 +192,13 @@ export async function userCopy(tx: Tx, userId: string, fiscal: FiscalRow, now: D
 export type Eligibility = {
   ratingAllowed: boolean;
   cashbackAllowed: boolean;
-  reason: null | 'UNSUPPORTED_MERCHANT_CATEGORY' | 'MERCHANT_CATEGORY_UNKNOWN' | 'NOT_EPSILON_PARTNER' | 'PHONE_NOT_VERIFIED';
+  reason:
+    | null
+    | 'UNSUPPORTED_MERCHANT_CATEGORY'
+    | 'MERCHANT_CATEGORY_UNKNOWN'
+    | 'NOT_EPSILON_PARTNER'
+    | 'VERIFICATION_REQUIRED'
+    | 'PHONE_NOT_VERIFIED';
 };
 
 /** Backend-only decision: only HoReCa may be rated; only active partners pay cashback. */
@@ -132,6 +207,9 @@ export function eligibility(fiscal: FiscalRow, user: typeof users.$inferSelect, 
   if (fiscal.sector !== 'horeca') return { ratingAllowed: false, cashbackAllowed: false, reason: 'UNSUPPORTED_MERCHANT_CATEGORY' };
   const bps = (fiscal.classificationEvidence as { cashbackBps?: number }).cashbackBps ?? 0;
   if (!fiscal.restaurantId || bps <= 0) return { ratingAllowed: true, cashbackAllowed: false, reason: 'NOT_EPSILON_PARTNER' };
+  // Trust policy: a customer's image is enough to rate, never enough to pay money.
+  if (Object.values(IMAGE_PROVIDERS).includes(fiscal.provider))
+    return { ratingAllowed: true, cashbackAllowed: false, reason: 'VERIFICATION_REQUIRED' };
   if (config.REQUIRE_PHONE_VERIFICATION && !user.phoneVerifiedAt)
     return { ratingAllowed: true, cashbackAllowed: false, reason: 'PHONE_NOT_VERIFIED' };
   return { ratingAllowed: true, cashbackAllowed: true, reason: null };
