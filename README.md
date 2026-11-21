@@ -4,6 +4,15 @@ The API for the Epsilon mobile app. It stores accounts, logins, profiles,
 receipts, ratings, the wallet ledger, restaurants and menus in PostgreSQL. It
 serves the `/v1` API that the app calls when `EXPO_PUBLIC_API_MODE=live`.
 
+| Repository | What it holds |
+| ---------- | ------------- |
+| [Epsilon-Back-End](https://github.com/AzizAlizade473/Epsilon-Back-End) (this one) | API server, database schema and migrations, receipt/fiscal logic |
+| [Epsilon-Front-End](https://github.com/AzizAlizade473/Epsilon-Front-End) | Expo app. It owns the API contract: `src/services/contracts/index.ts` and the generated `docs/openapi.yaml` |
+
+Clone both into the same folder (`.../Epsilon-Back-End` and `.../Epsilon-Front-End`).
+`npm run test:contract` checks this server's responses against the app's schemas
+from there, or from `EPSILON_APP_DIR` if the app lives elsewhere.
+
 | Part         | Tech                                                         |
 | ------------ | ------------------------------------------------------------ |
 | HTTP server  | Node.js 22, TypeScript, Fastify                              |
@@ -100,11 +109,10 @@ EXPO_PUBLIC_API_URL=http://10.0.2.2:3000/v1
 
 Two limits on the app side:
 
-- The app's `app.config.ts` sets `usesCleartextTraffic: false`, so Android
-  builds block plain `http://`. For local testing, either allow cleartext in
-  development builds only and rebuild, or expose the API over HTTPS with a
-  tunnel such as `cloudflared tunnel --url http://localhost:3000`, then use
-  that `https://…/v1` URL.
+- Android blocks plain `http://` unless the build opts in. The app's
+  `live-local` EAS profile does (`ALLOW_DEV_CLEARTEXT=true`, development
+  builds only). Otherwise expose the API over HTTPS with a tunnel such as
+  `cloudflared tunnel --url http://localhost:3000` and use that `https://…/v1` URL.
 - The app's live adapter rejects `login` and `register` intents before sending
   them. The server already supports intents: it returns `ACCOUNT_NOT_FOUND`
   (404) or `ACCOUNT_EXISTS` (409). Turn this on in the app with
@@ -116,8 +124,8 @@ Two limits on the app side:
 | --------------------- | -------------------------------------------------------- |
 | `npm run dev`         | Start with auto-reload                                   |
 | `npm start`           | Start without reload                                     |
-| `npm test`            | Run the auth and money tests (no database needed)        |
-| `npm run test:contract` | Check responses against the app's Zod schemas (needs `../Epsilon-Front-End`) |
+| `npm test`            | Run all tests (no database needed)                       |
+| `npm run test:contract` | Check responses against the app's Zod schemas (needs the app repo, see above) |
 | `npm run typecheck`   | Run the TypeScript check                                 |
 | `npm run db:generate` | Create a new migration after you edit `src/db/schema.ts` |
 | `npm run db:migrate`  | Apply migrations to `DATABASE_URL`                       |
@@ -134,7 +142,7 @@ Two limits on the app side:
 | `POST /me/phone/otp/request`, `/me/phone/otp/verify`         | bearer |
 | `GET / PUT /me/notification-settings`, `POST /devices`       | bearer |
 | `GET /restaurants`, `/restaurants/:id`                       | bearer |
-| `POST /receipts/resolve`, `GET /receipts/:id`                | bearer |
+| `POST /receipts/resolve` (partner code or e-kassa fiscal QR), `GET /receipts`, `GET /receipts/:id` | bearer |
 | `POST / GET /feedback`                                       | bearer |
 | `GET /wallet`, `/wallet/transactions`, `/wallet/transactions/:id` | bearer |
 
@@ -146,6 +154,23 @@ always sends:
 
 - The same key with the same body replays the stored response.
 - The same key with a different body returns 422 and changes nothing.
+
+## Fiscal (e-kassa) receipts
+
+A scanned e-kassa QR goes through `POST /receipts/resolve`. The server parses the
+QR (it never opens the link), gets the receipt from a `FiscalProvider`, checks
+its totals, classifies the business sector and returns the receipt with a
+`fiscal` block. Only restaurants and cafés can be rated; partner cashback is
+paid once per receipt line. Code is in `src/fiscal/`.
+
+| Setting | Meaning |
+| ------- | ------- |
+| `FISCAL_PROVIDER=none` | Default. No authorised e-kassa API exists yet, so fiscal scans return `RECEIPT_SOURCE_UNAVAILABLE`. |
+| `FISCAL_PROVIDER=fixture` | Local testing only: receipts from `private-fixtures/fiscal/*.json` (git-ignored), shown in the app as "Test data". Refused in production. |
+| `GEMINI_ENABLED` | `false` by default. When `true` (with `GEMINI_API_KEY`), Gemini suggests a business type for merchants no rule or partner record identifies. |
+| `GEMINI_MAX_CALLS_PER_DAY` | App-side cap (default 5) protecting the free-tier quota. |
+
+Status and the manual testing guide: `docs/FISCAL_RECEIPTS.md` in the app repo.
 
 ## How the important rules are enforced
 
