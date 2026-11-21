@@ -4,6 +4,7 @@ import { migrate } from 'drizzle-orm/pglite/migrator';
 import { randomUUID } from 'node:crypto';
 
 import { buildApp } from '../src/app.js';
+import type { Deps } from '../src/context.js';
 import type { GoogleIdentity } from '../src/auth/google.js';
 import { loadConfig } from '../src/config.js';
 import type { Db } from '../src/db/client.js';
@@ -11,7 +12,10 @@ import * as schema from '../src/db/schema.js';
 import { ApiError } from '../src/errors.js';
 
 /** Fresh in-memory Postgres + app per test file. Clock and SMS are controllable. */
-export async function setup(overrides: Record<string, string> = {}) {
+export async function setup(
+  overrides: Record<string, string> = {},
+  extra: { fiscal?: Deps['fiscal']; advisor?: Deps['advisor'] } = {},
+) {
   const client = new PGlite();
   const db = drizzle(client, { schema }) as unknown as Db;
   await migrate(drizzle(client), { migrationsFolder: 'drizzle' });
@@ -31,6 +35,7 @@ export async function setup(overrides: Record<string, string> = {}) {
     db,
     config,
     now: () => new Date(clock.now),
+    ...extra,
     sms: async (phone, code) => void sent.push({ phone, code }),
     google: async (idToken) => {
       const identity = googleAccounts.get(idToken);

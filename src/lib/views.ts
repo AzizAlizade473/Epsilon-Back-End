@@ -3,10 +3,13 @@ import { and, asc, count, eq } from 'drizzle-orm';
 
 import type { Config } from '../config.js';
 import type { Db, Tx } from '../db/client.js';
+import { claimedLines, eligibility } from '../fiscal/service.js';
+import type { FiscalDocument } from '../fiscal/document.js';
 import {
   authIdentities,
   branches,
   feedback,
+  fiscalReceipts,
   ledgerEntries,
   purchaseItems,
   purchases,
@@ -69,30 +72,36 @@ export function rewardEligible(user: UserRow, config: Config): boolean {
 /** Receipt projection for its owner. Throws NOT_FOUND unless `userId` claimed it. */
 export async function receiptView(conn: Conn, purchaseId: string, user: UserRow, config: Config, now: Date) {
   const [row] = await conn
-    .select({ purchase: purchases, branch: branches, restaurant: restaurants })
+    .select({ purchase: purchases, branch: branches, restaurant: restaurants, fiscal: fiscalReceipts })
     .from(purchases)
-    .innerJoin(branches, eq(branches.id, purchases.branchId))
-    .innerJoin(restaurants, eq(restaurants.id, branches.restaurantId))
+    // Fiscal receipts from non-partner businesses have no branch or restaurant.
+    .leftJoin(branches, eq(branches.id, purchases.branchId))
+    .leftJoin(restaurants, eq(restaurants.id, branches.restaurantId))
+    .leftJoin(fiscalReceipts, eq(fiscalReceipts.id, purchases.fiscalReceiptId))
     .where(and(eq(purchases.id, purchaseId), eq(purchases.claimedBy, user.id)));
   if (!row) throw new ApiError(404, 'RECEIPT_NOT_FOUND', 'Receipt not found');
-  const [branchTotal] = await conn
-    .select({ n: count() })
-    .from(branches)
-    .where(eq(branches.restaurantId, row.restaurant.id));
   const items = await conn
     .select({ item: purchaseItems, rating: feedback.rating })
     .from(purchaseItems)
     .leftJoin(feedback, eq(feedback.purchaseItemId, purchaseItems.id))
     .where(eq(purchaseItems.purchaseId, purchaseId))
-    .orderBy(asc(purchaseItems.name), asc(purchaseItems.id));
+    .orderBy(asc(purchaseItems.lineNo), asc(purchaseItems.name), asc(purchaseItems.id));
 
   const expired = row.purchase.expiresAt <= now || row.purchase.status !== 'open';
-  const eligible = rewardEligible(user, config);
+  const fiscal = row.fiscal;
+  const doc = fiscal ? (fiscal.document as FiscalDocument) : null;
+  const rules = fiscal ? eligibility(fiscal, user, config) : null;
+  const claimed = fiscal ? await claimedLines(conn, fiscal.id) : new Set<number>();
+  const bps = fiscal
+    ? ((fiscal.classificationEvidence as { cashbackBps?: number }).cashbackBps ?? 0)
+    : (row.restaurant?.cashbackBps ?? 0);
+  const rewardsOn = fiscal ? rules!.cashbackAllowed : rewardEligible(user, config);
   let hint = 0;
   const itemViews = items.map(({ item, rating }) => {
-    const canRate = !expired && rating === null;
-    if (canRate && eligible)
-      hint += rewardMinor(item.unitPriceMinor, item.quantity, row.restaurant.cashbackBps);
+    const canRate = !expired && rating === null && (rules?.ratingAllowed ?? true);
+    const line = doc && item.lineNo !== null ? doc.items.find((i) => i.lineNo === item.lineNo) : undefined;
+    const lineClaimed = line ? claimed.has(line.lineNo) : false;
+    if (canRate && rewardsOn && !lineClaimed) hint += rewardMinor(item.unitPriceMinor, item.quantity, bps);
     return {
       id: item.id,
       name: item.name,
@@ -100,18 +109,65 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
       unitPriceMinor: item.unitPriceMinor,
       canRate,
       rating,
+      ...(line
+        ? {
+            line: {
+              lineNo: line.lineNo,
+              originalName: line.originalName,
+              quantityMilli: line.quantityMilli,
+              unit: line.unit,
+              unitPriceMinor: line.unitPriceMinor,
+              lineTotalMinor: line.lineTotalMinor,
+              cashbackClaimed: lineClaimed,
+            },
+          }
+        : {}),
     };
   });
+  const [branchTotal] = row.restaurant
+    ? await conn.select({ n: count() }).from(branches).where(eq(branches.restaurantId, row.restaurant.id))
+    : [undefined];
+  const merchantName = doc?.merchant.displayName ?? 'Receipt';
+  const evidence = fiscal ? (fiscal.classificationEvidence as { status: string; evidence: string[] }) : null;
   return {
     id: row.purchase.id,
-    restaurant: restaurantView(row.restaurant, branchTotal?.n ?? 0),
-    branch: { id: row.branch.id, name: row.branch.name },
+    restaurant: row.restaurant
+      ? restaurantView(row.restaurant, branchTotal?.n ?? 0)
+      : { id: `m-${row.purchase.id}`, name: merchantName, logoUrl: null, branchCount: 0 },
+    branch: row.branch
+      ? { id: row.branch.id, name: row.branch.name }
+      : { id: `b-${row.purchase.id}`, name: doc?.merchant.objectName ?? doc?.merchant.address ?? merchantName },
     issuedAt: row.purchase.issuedAt.toISOString(),
     totalMinor: row.purchase.totalMinor,
     currency: 'AZN' as const,
     status: expired ? ('expired' as const) : ('verified' as const),
     items: itemViews,
     ...(hint > 0 ? { rewardHint: { amountMinor: hint, currency: 'AZN' as const } } : {}),
+    ...(fiscal && doc && rules && evidence
+      ? {
+          fiscal: {
+            verification: {
+              // Test fixtures are never presented as government-verified.
+              status: fiscal.provider === 'fixture' ? ('test_data' as const) : ('verified' as const),
+              provider: fiscal.provider,
+              retrievedAt: fiscal.retrievedAt.toISOString(),
+            },
+            classification: {
+              sector: fiscal.sector,
+              businessType: fiscal.businessType,
+              method: fiscal.classificationMethod,
+              status: evidence.status,
+              evidence: evidence.evidence,
+            },
+            partner: { isPartner: fiscal.restaurantId !== null, restaurantId: fiscal.restaurantId, branchId: fiscal.branchId },
+            eligibility: rules,
+            merchant: doc.merchant,
+            receipt: doc.receipt,
+            device: doc.device,
+            additionalFields: doc.additionalFields,
+          },
+        }
+      : {}),
   };
 }
 

@@ -1,3 +1,4 @@
+import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { type FastifyError } from 'fastify';
 import { randomUUID } from 'node:crypto';
@@ -35,6 +36,16 @@ export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
   });
 
   app.decorateRequest('auth', null);
+
+  // Only browsers need CORS; the Android app is not affected by it.
+  const origins = deps.config.CORS_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean);
+  if (origins.length)
+    await app.register(cors, {
+      origin: origins,
+      allowedHeaders: ['Authorization', 'Content-Type', 'Idempotency-Key', 'X-Request-Id', 'Accept-Language'],
+      exposedHeaders: ['X-Request-Id', 'Retry-After'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    });
 
   await app.register(rateLimit, {
     global: true,

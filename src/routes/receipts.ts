@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, desc, eq, isNotNull } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -9,6 +9,10 @@ import { sha256 } from '../lib/crypto.js';
 import { idempotent } from '../lib/idempotency.js';
 import { idParam, parse } from '../lib/validation.js';
 import { loadUser, receiptView } from '../lib/views.js';
+import { noAdvisor } from '../fiscal/classify.js';
+import { unavailableProvider } from '../fiscal/provider.js';
+import { parseFiscalQr, QrError } from '../fiscal/qr.js';
+import { obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
 
 const resolveBody = z
   .object({
@@ -25,6 +29,26 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
   app.post('/receipts/resolve', { config: { auth: true, rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (request, reply) => {
     const auth = request.auth!;
     const body = parse(resolveBody, request.body);
+
+    // An e-kassa QR is parsed, never fetched; other text is Epsilon's own purchase code.
+    let ref: ReturnType<typeof parseFiscalQr>;
+    try {
+      ref = parseFiscalQr(body.value);
+    } catch (error) {
+      if (error instanceof QrError) throw new ApiError(422, 'RECEIPT_UNSUPPORTED', 'Unsupported receipt code');
+      throw error;
+    }
+    if (ref) {
+      const fiscal = await obtainFiscalReceipt(deps.db, ref, deps.fiscal ?? unavailableProvider, deps.advisor ?? noAdvisor, deps.now());
+      const out = await idempotent(deps, request, auth.userId, 'receipt.resolve', async (tx) => {
+        const now = deps.now();
+        const purchaseId = await userCopy(tx, auth.userId, fiscal, now);
+        const user = await loadUser(tx, auth.userId);
+        return { status: 200, body: await receiptView(tx, purchaseId, user, deps.config, now) };
+      });
+      return reply.code(out.status).send(out.body);
+    }
+
     const out = await idempotent(deps, request, auth.userId, 'receipt.resolve', async (tx) => {
       const now = deps.now();
       const [purchase] = await tx
@@ -44,6 +68,17 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
       return { status: 200, body: await receiptView(tx, purchase.id, user, deps.config, now) };
     });
     return reply.code(out.status).send(out.body);
+  });
+
+  /** This account's receipts, newest first (includes scanned fiscal receipts without cashback). */
+  app.get('/receipts', { config: { auth: true } }, async (request) => {
+    const rows = await deps.db
+      .select({ id: purchases.id })
+      .from(purchases)
+      .where(and(eq(purchases.claimedBy, request.auth!.userId), isNotNull(purchases.claimedAt)))
+      .orderBy(desc(purchases.claimedAt))
+      .limit(50);
+    return { items: rows, nextCursor: null };
   });
 
   app.get('/receipts/:id', { config: { auth: true } }, async (request) => {

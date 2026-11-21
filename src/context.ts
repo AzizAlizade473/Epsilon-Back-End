@@ -2,6 +2,8 @@ import type { Config } from './config.js';
 import type { Db } from './db/client.js';
 import type { GoogleVerifier } from './auth/google.js';
 import type { SmsSender } from './auth/sms.js';
+import type { SectorAdvisor } from './fiscal/classify.js';
+import type { FiscalProvider } from './fiscal/provider.js';
 
 export type Deps = {
   db: Db;
@@ -10,6 +12,9 @@ export type Deps = {
   sms: SmsSender;
   /** Injectable clock for tests. */
   now: () => Date;
+  /** Fiscal receipt source and optional AI sector advisor; safe "unavailable"/"off" defaults. */
+  fiscal?: FiscalProvider;
+  advisor?: SectorAdvisor;
 };
 
 export type AuthContext = { userId: string; familyId: string; authenticatedAt: Date };

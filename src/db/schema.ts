@@ -124,9 +124,12 @@ export const restaurants = pgTable('restaurants', {
   cuisine: text('cuisine'),
   /** Cashback in basis points of the rated item's line price (250 = 2.5 %). */
   cashbackBps: integer('cashback_bps').notNull().default(0),
+  /** Taxpayer ID printed on fiscal receipts; links scanned receipts to this partner. */
+  voen: text('voen'),
   createdAt: createdAt(),
 }, (t) => [
   index('restaurants_name_idx').on(t.name, t.id),
+  index('restaurants_voen_idx').on(t.voen),
   check('restaurants_cashback_bps_check', sql`${t.cashbackBps} between 0 and 10000`),
 ]);
 
@@ -138,9 +141,14 @@ export const branches = pgTable(
       .notNull()
       .references(() => restaurants.id),
     name: text('name').notNull(),
+    /** e-kassa establishment code ("Obyektin kodu", e.g. 1506475881-20001). */
+    objectCode: text('object_code'),
     createdAt: createdAt(),
   },
-  (t) => [index('branches_restaurant_idx').on(t.restaurantId)],
+  (t) => [
+    index('branches_restaurant_idx').on(t.restaurantId),
+    uniqueIndex('branches_object_code_key').on(t.objectCode).where(sql`${t.objectCode} is not null`),
+  ],
 );
 
 export const dishes = pgTable(
@@ -162,6 +170,76 @@ export const dishes = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------- fiscal receipts
+
+/**
+ * One row per real fiscal receipt (e-kassa Fiscal ID), shared by every user who scans
+ * it. `document` is the normalized receipt; `raw` the provider's original response,
+ * kept for audit (cashier identity is removed before storage).
+ */
+export const fiscalReceipts = pgTable(
+  'fiscal_receipts',
+  {
+    id: id(),
+    issuer: text('issuer').notNull(),
+    fiscalId: text('fiscal_id').notNull(),
+    provider: text('provider').notNull(),
+    document: jsonb('document').notNull(),
+    raw: jsonb('raw'),
+    merchantVoen: text('merchant_voen'),
+    objectCode: text('object_code'),
+    sector: text('sector').notNull(),
+    businessType: text('business_type').notNull(),
+    classificationMethod: text('classification_method').notNull(),
+    classificationEvidence: jsonb('classification_evidence').notNull(),
+    restaurantId: uuid('restaurant_id').references(() => restaurants.id),
+    branchId: uuid('branch_id').references(() => branches.id),
+    retrievedAt: ts('retrieved_at').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('fiscal_receipts_identity_key').on(t.issuer, t.fiscalId)],
+);
+
+/** A fiscal receipt line pays cashback at most once, whoever rates it first. */
+export const fiscalCashbackClaims = pgTable(
+  'fiscal_cashback_claims',
+  {
+    id: id(),
+    fiscalReceiptId: uuid('fiscal_receipt_id')
+      .notNull()
+      .references(() => fiscalReceipts.id),
+    lineNo: smallint('line_no').notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('fiscal_cashback_claims_line_key').on(t.fiscalReceiptId, t.lineNo)],
+);
+
+/** Classification cache per establishment (VÖEN + establishment code). */
+export const merchantClassifications = pgTable(
+  'merchant_classifications',
+  {
+    id: id(),
+    voen: text('voen').notNull(),
+    /** '' when the receipt carried no establishment code. */
+    objectCode: text('object_code').notNull(),
+    sector: text('sector').notNull(),
+    businessType: text('business_type').notNull(),
+    method: text('method').notNull(),
+    evidence: jsonb('evidence').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex('merchant_classifications_key').on(t.voen, t.objectCode)],
+);
+
+/** Application-level Gemini call counter (protects the free-tier daily quota). */
+export const geminiUsage = pgTable('gemini_usage', {
+  day: text('day').primaryKey(),
+  calls: integer('calls').notNull().default(0),
+});
+
 // ---------------------------------------------------------------- purchases
 
 export const purchaseStatus = pgEnum('purchase_status', [
@@ -174,9 +252,10 @@ export const purchases = pgTable(
   'purchases',
   {
     id: id(),
-    branchId: uuid('branch_id')
-      .notNull()
-      .references(() => branches.id),
+    /** Null for fiscal receipts from businesses that are not Epsilon partners. */
+    branchId: uuid('branch_id').references(() => branches.id),
+    /** Set when this purchase is one user's copy of a scanned fiscal receipt. */
+    fiscalReceiptId: uuid('fiscal_receipt_id').references(() => fiscalReceipts.id),
     /** SHA-256 of the opaque purchase reference printed as QR / code. */
     referenceHash: text('reference_hash').notNull(),
     issuedAt: ts('issued_at').notNull(),
@@ -204,6 +283,8 @@ export const purchaseItems = pgTable(
       .references(() => purchases.id),
     dishId: uuid('dish_id').references(() => dishes.id),
     name: text('name').notNull(), // snapshot at sale time
+    /** Line number on the fiscal receipt (stable line identity); null for partner codes. */
+    lineNo: smallint('line_no'),
     quantity: integer('quantity').notNull(),
     unitPriceMinor: integer('unit_price_minor').notNull(),
   },
