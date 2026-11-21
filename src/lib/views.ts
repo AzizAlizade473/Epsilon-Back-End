@@ -69,6 +69,14 @@ export function rewardEligible(user: UserRow, config: Config): boolean {
   return !config.REQUIRE_PHONE_VERIFICATION || user.phoneVerifiedAt !== null;
 }
 
+/** How each source obtained the receipt (names as used in reports and the app). */
+const ACQUISITION: Record<string, 'partner_pos_verified' | 'printed_receipt_ocr' | 'customer_supplied_official_image' | 'test_fixture'> = {
+  partner_pos: 'partner_pos_verified',
+  [IMAGE_PROVIDERS.paper_photo]: 'printed_receipt_ocr',
+  [IMAGE_PROVIDERS.official_page]: 'customer_supplied_official_image',
+  fixture: 'test_fixture',
+};
+
 /** Receipt projection for its owner. Throws NOT_FOUND unless `userId` claimed it. */
 export async function receiptView(conn: Conn, purchaseId: string, user: UserRow, config: Config, now: Date) {
   const [row] = await conn
@@ -157,6 +165,8 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
                       ? ('paper_photo' as const)
                       : ('verified' as const),
               provider: fiscal.provider,
+              acquisition: ACQUISITION[fiscal.provider] ?? ('authorized_fiscal_api' as const),
+              engine: fiscal.extractionEngine,
               retrievedAt: fiscal.retrievedAt.toISOString(),
             },
             classification: {

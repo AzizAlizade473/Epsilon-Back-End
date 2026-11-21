@@ -11,7 +11,8 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:contract": "vitest run -c test/_contract/vitest.config.mts",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "partner:key": "tsx --env-file=.env src/db/partner-key.ts"
   },
   "license": "UNLICENSED",
   "dependencies": {

@@ -27,6 +27,7 @@ export type ErrorCode =
   | 'ACCOUNT_NOT_FOUND'
   | 'ACCOUNT_EXISTS'
   | 'REAUTH_REQUIRED'
+  | 'FORBIDDEN'
   | 'NOT_FOUND'
   | 'CONFLICT'
   | 'INTERNAL';

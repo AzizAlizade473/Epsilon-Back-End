@@ -126,6 +126,8 @@ export const restaurants = pgTable('restaurants', {
   cashbackBps: integer('cashback_bps').notNull().default(0),
   /** Taxpayer ID printed on fiscal receipts; links scanned receipts to this partner. */
   voen: text('voen'),
+  /** SHA-256 of the partner's POS integration key (POST /partner/receipts). */
+  posKeyHash: text('pos_key_hash'),
   createdAt: createdAt(),
 }, (t) => [
   index('restaurants_name_idx').on(t.name, t.id),
@@ -184,6 +186,8 @@ export const fiscalReceipts = pgTable(
     issuer: text('issuer').notNull(),
     fiscalId: text('fiscal_id').notNull(),
     provider: text('provider').notNull(),
+    /** How the contents were read: structured (provider/POS data), on_device_ocr or gemini. */
+    extractionEngine: text('extraction_engine').notNull().default('structured'),
     document: jsonb('document').notNull(),
     raw: jsonb('raw'),
     merchantVoen: text('merchant_voen'),

@@ -10,6 +10,7 @@ import { authRoutes } from './routes/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
 import { feedbackRoutes } from './routes/feedback.js';
 import { meRoutes } from './routes/me.js';
+import { partnerRoutes } from './routes/partner.js';
 import { receiptRoutes } from './routes/receipts.js';
 import { walletRoutes } from './routes/wallet.js';
 
@@ -98,6 +99,7 @@ export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
       await meRoutes(v1, deps);
       await catalogRoutes(v1, deps);
       await receiptRoutes(v1, deps);
+      await partnerRoutes(v1, deps);
       await feedbackRoutes(v1, deps);
       await walletRoutes(v1, deps);
     },

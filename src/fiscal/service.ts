@@ -10,6 +10,7 @@ import { fiscalDocumentSchema, integrityProblems, withoutPersonal, type FiscalDo
 import type { FiscalProvider } from './provider.js';
 import { ImageReadError, type ReceiptImageReader } from './gemini.js';
 import type { ReceiptImage } from './image.js';
+import { readOcr, type OcrPage } from './ocr.js';
 import type { FiscalRef } from './qr.js';
 
 type Conn = Db | Tx;
@@ -86,14 +87,29 @@ export async function importFiscalFromImage(
   images: ReceiptImage[],
   reader: ReceiptImageReader,
   now: Date,
+  ocr: OcrPage[] = [],
 ): Promise<FiscalRow> {
   const [known] = await db.select().from(fiscalReceipts).where(identity(ref));
   if (known) return known;
+
+  // 1. On-device OCR text (no cloud call): used only when complete and consistent.
+  const local = ocr.length ? readOcr(ocr, ref.fiscalId) : null;
+  if (local?.document) {
+    if (!local.printedFiscalId || !sameFiscalId(local.printedFiscalId, ref.fiscalId))
+      throw new ApiError(422, 'RECEIPT_IMAGE_MISMATCH', 'The image shows a different receipt');
+    const c = await classifyMerchant(db, local.document, { suggest: async () => null });
+    return storeFiscal(db, ref, IMAGE_PROVIDERS[source], local.document, null, c, now, 'on_device_ocr');
+  }
+
+  // 2. Gemini vision, only when on-device reading was not enough.
   let reading;
   try {
     reading = await reader.read(images, ref.fiscalId, AbortSignal.timeout(READER_TIMEOUT_MS));
   } catch (error) {
     if (!(error instanceof ImageReadError)) throw error;
+    // AI off or out of quota: report what on-device OCR could not read, never guess.
+    if ((error.kind === 'disabled' || error.kind === 'quota') && local)
+      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, local.uncertain);
     if (error.kind === 'disabled') throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt image reading is turned off');
     if (error.kind === 'quota') throw new ApiError(503, 'RECEIPT_READER_QUOTA', 'Receipt reading limit reached for today');
     if (error.kind === 'incomplete')
@@ -107,7 +123,7 @@ export async function importFiscalFromImage(
   // Partner record, cache and name rules first; the reader's suggestion only as the last resort (no extra AI call).
   const fromReading = { suggest: async () => reading.suggestion };
   const c = await classifyMerchant(db, reading.document, fromReading);
-  return storeFiscal(db, ref, IMAGE_PROVIDERS[source], reading.document, null, c, now);
+  return storeFiscal(db, ref, IMAGE_PROVIDERS[source], reading.document, null, c, now, 'gemini');
 }
 
 async function storeFiscal(
@@ -118,6 +134,7 @@ async function storeFiscal(
   raw: unknown,
   c: Classification,
   now: Date,
+  engine: 'structured' | 'on_device_ocr' | 'gemini' = 'structured',
 ): Promise<FiscalRow> {
   await db
     .insert(fiscalReceipts)
@@ -125,6 +142,7 @@ async function storeFiscal(
       issuer: ref.issuer,
       fiscalId: ref.fiscalId,
       provider: providerName,
+      extractionEngine: engine,
       document,
       raw: raw ?? null,
       merchantVoen: document.merchant.voen,

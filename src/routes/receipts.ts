@@ -15,6 +15,7 @@ import { parseFiscalQr, QrError } from '../fiscal/qr.js';
 import { importFiscalFromImage, obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
 import { ImageReadError, type ReceiptImageReader } from '../fiscal/gemini.js';
 import { validateImage } from '../fiscal/image.js';
+import { ocrPageSchema } from '../fiscal/ocr.js';
 
 const resolveBody = z
   .object({
@@ -31,6 +32,8 @@ const importBody = z
     source: z.enum(['official_page', 'paper_photo']),
     /** One image, or up to 4 consecutive parts of a long receipt. */
     images: z.array(imageBody).min(1).max(4),
+    /** On-device OCR lines per image (same order), when the app could run ML Kit. */
+    ocr: z.array(ocrPageSchema).max(4).optional(),
   })
   .strict();
 
@@ -109,7 +112,7 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
       }
       if (!ref) throw new ApiError(422, 'RECEIPT_UNSUPPORTED', 'Not an e-kassa receipt code');
       const images = body.images.map((i) => validateImage(i.data, i.mime, deps.config.MAX_RECEIPT_IMAGE_BYTES));
-      const fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now());
+      const fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now(), body.ocr ?? []);
       const out = await idempotent(deps, request, auth.userId, 'receipt.import', async (tx) => {
         const now = deps.now();
         const purchaseId = await userCopy(tx, auth.userId, fiscal, now);
