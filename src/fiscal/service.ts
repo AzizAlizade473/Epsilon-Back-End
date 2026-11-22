@@ -6,7 +6,7 @@ import { fiscalCashbackClaims, fiscalReceipts, purchaseItems, purchases, users }
 import { ApiError } from '../errors.js';
 import { sha256 } from '../lib/crypto.js';
 import { classifyMerchant, type Classification, type SectorAdvisor } from './classify.js';
-import { fiscalDocumentSchema, integrityProblems, withoutPersonal, type FiscalDocument } from './document.js';
+import { fiscalDocumentSchema, integrityProblems, withoutPersonal, type FiscalDocument, type FiscalItem } from './document.js';
 import type { FiscalProvider } from './provider.js';
 import { ImageReadError, type ReceiptImageReader } from './gemini.js';
 import type { ReceiptImage } from './image.js';
@@ -80,6 +80,9 @@ export function sameFiscalId(printed: string, known: string): boolean {
  * photo), read by the image reader. Used only when no authorised provider has the
  * receipt; a receipt already stored is never re-read.
  */
+/** One product line confirmed by the customer (amounts in qəpik, quantity in thousandths). */
+export type CorrectedLine = { name: string; quantityMilli: number; unitPriceMinor: number; lineTotalMinor: number };
+
 export async function importFiscalFromImage(
   db: Db,
   ref: FiscalRef,
@@ -90,9 +93,39 @@ export async function importFiscalFromImage(
   ocr: OcrPage[] = [],
   /** Diagnostics without receipt content: counts and which parts could not be read. */
   trace: (event: string) => void = () => undefined,
+  /** Product lines the customer confirmed after a partial read (needs the same OCR). */
+  corrections?: CorrectedLine[],
 ): Promise<FiscalRow> {
   const [known] = await db.select().from(fiscalReceipts).where(identity(ref));
   if (known) return known;
+
+  // 0. Customer-completed product lines: merchant, date, total and Fiscal ID still come
+  // from the image itself, and the lines must add up to the printed total.
+  if (corrections) {
+    if (!ocr.length) throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Corrections need the receipt text', undefined, ['items']);
+    const items: FiscalItem[] = corrections.map((line, i) => ({
+      lineNo: i + 1,
+      originalName: line.name.trim(),
+      normalizedName: line.name.trim().replace(/\s+/g, ' '),
+      quantityMilli: line.quantityMilli,
+      unit: null,
+      unitPriceMinor: line.unitPriceMinor,
+      lineTotalMinor: line.lineTotalMinor,
+      discountMinor: null,
+      vatRatePercent: null,
+      vatMinor: null,
+    }));
+    const checked = readOcr(ocr, ref.fiscalId, items);
+    trace(`corrections lines=${items.length} result=${checked.document ? 'complete' : checked.uncertain.join('|')}`);
+    if (!checked.document)
+      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'The corrected receipt is not consistent', undefined, checked.uncertain, {
+        draft: checked.draft,
+      });
+    if (!checked.printedFiscalId || !sameFiscalId(checked.printedFiscalId, ref.fiscalId))
+      throw new ApiError(422, 'RECEIPT_IMAGE_MISMATCH', 'The image shows a different receipt');
+    const c = await classifyMerchant(db, checked.document, { suggest: async () => null });
+    return storeFiscal(db, ref, IMAGE_PROVIDERS[source], checked.document, null, c, now, 'customer_corrected');
+  }
 
   // 1. On-device OCR text (no cloud call): used only when complete and consistent.
   const local = ocr.length ? readOcr(ocr, ref.fiscalId) : null;
@@ -116,12 +149,14 @@ export async function importFiscalFromImage(
     if (!(error instanceof ImageReadError)) throw error;
     // AI off or out of quota: report what on-device OCR could not read, never guess.
     if ((error.kind === 'disabled' || error.kind === 'quota' || error.kind === 'busy') && local)
-      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, local.uncertain);
+      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, local.uncertain, {
+        draft: local.draft,
+      });
     if (error.kind === 'disabled') throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt image reading is turned off');
     if (error.kind === 'quota') throw new ApiError(503, 'RECEIPT_READER_QUOTA', 'Receipt reading limit reached for today');
     if (error.kind === 'busy') throw new ApiError(503, 'RECEIPT_READER_BUSY', 'The receipt reader is busy, try again shortly', 30);
     if (error.kind === 'incomplete')
-      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, error.fields);
+      throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, error.fields, local ? { draft: local.draft } : undefined);
     throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt could not be read, try again', 10);
   }
   // The printed Fiscal ID is the only link between the image and the scanned QR: required.
@@ -142,7 +177,7 @@ async function storeFiscal(
   raw: unknown,
   c: Classification,
   now: Date,
-  engine: 'structured' | 'on_device_ocr' | 'gemini' = 'structured',
+  engine: 'structured' | 'on_device_ocr' | 'gemini' | 'customer_corrected' = 'structured',
 ): Promise<FiscalRow> {
   await db
     .insert(fiscalReceipts)

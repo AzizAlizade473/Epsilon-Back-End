@@ -41,6 +41,8 @@ export class ApiError extends Error {
     readonly retryAfterSeconds?: number,
     /** Machine-readable field names, e.g. which parts of a receipt image could not be read. */
     readonly fields?: string[],
+    /** Extra machine-readable payload, e.g. the partly read receipt for the customer to complete. */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';

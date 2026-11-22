@@ -35,6 +35,21 @@ const importBody = z
     images: z.array(imageBody).min(1).max(4),
     /** On-device OCR lines per image (same order), when the app could run ML Kit. */
     ocr: z.array(ocrPageSchema).max(4).optional(),
+    /** Product lines the customer completed after a partial read (needs `ocr`). */
+    corrections: z
+      .array(
+        z
+          .object({
+            name: z.string().trim().min(1).max(200),
+            quantityMilli: z.number().int().min(1).max(100_000_000),
+            unitPriceMinor: z.number().int().min(0).max(1_000_000_000),
+            lineTotalMinor: z.number().int().min(0).max(1_000_000_000),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100)
+      .optional(),
   })
   .strict();
 
@@ -116,7 +131,7 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
       const trace = (event: string) => request.log.info({ fiscal: maskFiscalId(ref.fiscalId) }, `receipt_import ${event}`);
       let fiscal;
       try {
-        fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now(), body.ocr ?? [], trace);
+        fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now(), body.ocr ?? [], trace, body.corrections);
       } catch (error) {
         if (deps.config.FISCAL_DEBUG_DIR && deps.config.NODE_ENV !== 'production')
           saveFailedImport(deps.config.FISCAL_DEBUG_DIR, ref.fiscalId, body, error);

@@ -227,6 +227,44 @@ describe('scan pipeline: on-device OCR first, Gemini only as fallback (mocked)',
     expect(res.body.error.code).toBe('RECEIPT_IMAGE_MISMATCH');
   });
 
+  it('a partial read returns a draft; the customer completes it; only consistent lines are accepted', async () => {
+    const { t, token, calls } = await withReader(false);
+    const garbled = RESTAURANT_ROWS.map((row) => (row[0] === '#2 AYRAN 0.5L' ? ['#2 AYRAN 0.5L', '2', '1,50', '3,OO'] : row));
+    const send = (corrections?: unknown) =>
+      t.call('POST', '/receipts/fiscal/import', {
+        token,
+        body: { qr: qr('TESTFISC0302'), source: 'official_page', images: [webp()], ocr: [page(garbled)], ...(corrections ? { corrections } : {}) },
+      });
+    const partial = await send();
+    expect(partial.status).toBe(422);
+    expect(partial.body.error.draft).toEqual({
+      merchantName: 'NARGIZ RESTORAN',
+      issuedAt: '2026-11-20T19:40:00+04:00',
+      totalMinor: 1350,
+      items: [
+        { name: 'TOYUQ ŞİŞ KABAB', quantityMilli: 1000, unitPriceMinor: 850, lineTotalMinor: 850 },
+        { name: 'PAXLAVA EV ÜSULU', quantityMilli: 1000, unitPriceMinor: 200, lineTotalMinor: 200 },
+      ],
+      unread: ['#2 AYRAN 0.5L  2  1,50  3,OO'],
+    });
+    const line = (name: string, quantityMilli: number, unitPriceMinor: number) => ({
+      name,
+      quantityMilli,
+      unitPriceMinor,
+      lineTotalMinor: (quantityMilli * unitPriceMinor) / 1000,
+    });
+    // Lines that do not add up to the printed total are refused (nothing invented).
+    const short = await send([line('TOYUQ ŞİŞ KABAB', 1000, 850), line('PAXLAVA EV ÜSULU', 1000, 200)]);
+    expect(short.body.error).toMatchObject({ code: 'RECEIPT_IMAGE_INCOMPLETE', fields: ['receipt total'] });
+    const done = await send([line('TOYUQ ŞİŞ KABAB', 1000, 850), line('AYRAN 0.5L', 2000, 150), line('PAXLAVA EV ÜSULU', 1000, 200)]);
+    expect(done.status).toBe(200);
+    expect(done.body.restaurant.name).toBe('NARGIZ RESTORAN'); // from the image, not the client
+    expect(done.body.items.map((i: { name: string }) => i.name)).toEqual(['TOYUQ ŞİŞ KABAB', 'AYRAN 0.5L', 'PAXLAVA EV ÜSULU']);
+    expect(done.body.fiscal.verification).toMatchObject({ engine: 'customer_corrected', status: 'official_image' });
+    expect(done.body.fiscal.eligibility).toMatchObject({ ratingAllowed: true, cashbackAllowed: false });
+    expect(calls).toHaveLength(0);
+  });
+
   it('incomplete OCR with Gemini off: lists the unreadable parts, stores nothing', async () => {
     const { t, token, calls } = await withReader(false);
     const noTotal = TAM_ROWS.filter((row) => !row[0]!.startsWith('YEKUN'));

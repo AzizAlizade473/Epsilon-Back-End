@@ -112,10 +112,28 @@ function withContinuation(rows: string[], re: RegExp, continues: (row: string) =
   return parts.join(' ');
 }
 
-export type OcrResult = { document: FiscalDocument | null; printedFiscalId: string | null; uncertain: string[] };
+/** What could be read, for the customer to complete: never stored, never trusted as is. */
+export type ReceiptDraft = {
+  merchantName: string | null;
+  issuedAt: string | null;
+  totalMinor: number | null;
+  items: { name: string; quantityMilli: number; unitPriceMinor: number; lineTotalMinor: number }[];
+  /** Item-table rows that could not be read as a product line, as printed (OCR text). */
+  unread: string[];
+};
+export type OcrResult = {
+  document: FiscalDocument | null;
+  printedFiscalId: string | null;
+  uncertain: string[];
+  draft: ReceiptDraft;
+};
 
-/** Rows → normalized receipt (or the list of what could not be read). */
-export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
+/**
+ * Rows → normalized receipt (or the list of what could not be read, plus a draft).
+ * `corrected` replaces the item table with lines the customer confirmed; everything
+ * else (merchant, date, total, Fiscal ID) still comes from the image only.
+ */
+export function parseReceiptRows(rows: string[], fiscalId: string, corrected?: FiscalItem[]): OcrResult {
   const uncertain: string[] = [];
   const printedFiscalId = find(rows, /Fis(?:c|k)al\s*[İIı]D\s*[:.]?\s*([A-Za-z0-9]{12})/iu);
   const objectName = find(rows, /Obyektin ad[ıi]\s*[:.]?\s*(.+)$/iu);
@@ -143,16 +161,25 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
 
   // Item table: between the column header and the grand total.
   const items: FiscalItem[] = [];
+  const unread: string[] = [];
   let pendingName: string[] = [];
+  let pendingRaw = '';
   // The table ends at the grand total; if that is unreadable, at the payment/fiscal section.
   const endIndex =
     totalIndex > headerIndex
       ? totalIndex
       : rows.findIndex((r, i) => i > headerIndex && /^(Nağd|Nagd|Ödəniş|Odenis|Fis(c|k)al|\*{3,}|Bonus)/iu.test(r.trim()));
-  if (headerIndex >= 0 && endIndex > headerIndex) {
+  if (!corrected && headerIndex >= 0 && endIndex > headerIndex) {
     for (const row of rows.slice(headerIndex + 1, endIndex)) {
       if (/^[*\s=-]+$/.test(row) || SUB_ROW.test(row.trim())) continue;
       const m = ITEM_ROW.exec(row);
+      // A numbered row ("#3 …") starts a new product: a held "#2 …" row was an unreadable line, not its name.
+      if (/^#\d+/.test(row.trim()) && pendingName.length && /^#\d+/.test(pendingRaw)) {
+        uncertain.push(`line ${items.length + 1}`);
+        unread.push(pendingRaw);
+        pendingName = [];
+        pendingRaw = '';
+      }
       if (m) {
         let tail = m[1]!.replace(/^#\d+\s*/, '').trim();
         let unit = unitOf(m[2] ?? m[3]);
@@ -160,6 +187,7 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
         if (!unit && UNIT_ONLY.test(tail)) [unit, tail] = [tail, ''];
         const name = [...pendingName, tail].join(' ').replace(/\s+/g, ' ').trim();
         pendingName = [];
+        pendingRaw = '';
         const unitPriceMinor = parseDecimal(m[5]!, 2);
         const lineTotalMinor = parseDecimal(m[6]!, 2);
         // A printed quantity is kept; a dropped one is derived only when total ÷ price is exact.
@@ -170,6 +198,7 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
             : null;
         if (!name || quantityMilli === null || quantityMilli <= 0 || unitPriceMinor === null || lineTotalMinor === null) {
           uncertain.push(`line ${items.length + 1}`);
+          unread.push(row.trim());
           continue;
         }
         items.push({
@@ -185,6 +214,7 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
           vatMinor: null,
         });
       } else if (/^#\d+/.test(row.trim()) || items.length === 0) {
+        if (!pendingName.length) pendingRaw = row.trim();
         pendingName.push(row.trim().replace(/^#\d+\s*/, '')); // a product name printed above its numbers
       } else {
         // A wrapped tail of the previous product name ("... 620" + "QR").
@@ -192,11 +222,15 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
         last.originalName = last.normalizedName = `${last.originalName} ${row.trim()}`;
       }
     }
-    if (pendingName.length) uncertain.push(`line ${items.length + 1}`);
+    if (pendingName.length) {
+      uncertain.push(`line ${items.length + 1}`);
+      unread.push(pendingName.join(' '));
+    }
   }
+  if (corrected) items.push(...corrected);
 
   if (!printedFiscalId) uncertain.push('fiscalId');
-  if (headerIndex < 0 || items.length === 0) uncertain.push('items');
+  if ((!corrected && headerIndex < 0) || items.length === 0) uncertain.push('items');
   if (totalMinor === null) uncertain.push('total');
   const issuedAt = parseIssuedAt(date, time);
   if (!issuedAt) uncertain.push('date');
@@ -204,7 +238,19 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
   const header = rows.find((r) => r.trim() && !/[:№]/.test(r) && !/^[\d\s.,*-]+$/.test(r));
   const displayName = objectName ?? header?.trim() ?? legalName;
   if (!displayName) uncertain.push('merchant');
-  if (uncertain.length) return { document: null, printedFiscalId, uncertain: [...new Set(uncertain)] };
+  const draft: ReceiptDraft = {
+    merchantName: displayName ?? null,
+    issuedAt,
+    totalMinor,
+    items: items.map((i) => ({
+      name: i.originalName,
+      quantityMilli: i.quantityMilli,
+      unitPriceMinor: i.unitPriceMinor,
+      lineTotalMinor: i.lineTotalMinor,
+    })),
+    unread,
+  };
+  if (uncertain.length) return { document: null, printedFiscalId, uncertain: [...new Set(uncertain)], draft };
 
   const doc: FiscalDocument = {
     merchant: {
@@ -241,12 +287,14 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
     additionalFields: {},
   };
   const valid = fiscalDocumentSchema.safeParse(doc);
-  if (!valid.success) return { document: null, printedFiscalId, uncertain: ['format'] };
+  if (!valid.success) return { document: null, printedFiscalId, uncertain: ['format'], draft };
   const problems = integrityProblems(valid.data);
-  return problems.length ? { document: null, printedFiscalId, uncertain: problems } : { document: valid.data, printedFiscalId, uncertain: [] };
+  return problems.length
+    ? { document: null, printedFiscalId, uncertain: problems, draft }
+    : { document: valid.data, printedFiscalId, uncertain: [], draft };
 }
 
 /** OCR pages (one per photo, in capture order) → receipt or what is missing. */
-export function readOcr(pages: OcrPage[], fiscalId: string): OcrResult {
-  return parseReceiptRows(mergeParts(pages.map(rowsOf)), fiscalId);
+export function readOcr(pages: OcrPage[], fiscalId: string, corrected?: FiscalItem[]): OcrResult {
+  return parseReceiptRows(mergeParts(pages.map(rowsOf)), fiscalId, corrected);
 }
