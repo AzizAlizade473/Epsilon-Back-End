@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { classifyByName, foldUpper } from '../src/fiscal/classify.js';
 import { fiscalDocumentSchema, integrityProblems, withoutPersonal } from '../src/fiscal/document.js';
 import { advisorInput, geminiAdvisor, type GenerateFn } from '../src/fiscal/gemini.js';
-import { MAX_QR_LENGTH, parseFiscalQr, QrError } from '../src/fiscal/qr.js';
+import { MAX_QR_LENGTH, officialVerificationUrl, parseFiscalQr, QrError } from '../src/fiscal/qr.js';
 import { CAFE, NON_PARTNER_RESTAURANT, PHARMACY, TAM_STORE, UNKNOWN_BUSINESS, WEIGHED } from './fiscal-fixtures.js';
 import { setup } from './helpers.js';
 
@@ -18,12 +18,15 @@ const code = (fn: () => unknown) => {
 
 describe('fiscal QR (untrusted input, parsed never fetched)', () => {
   it('reads the 12-char Fiscal ID from the doc parameter inside the URL fragment', () => {
-    expect(parseFiscalQr('https://monitoring.e-kassa.gov.az/#/index?doc=TESTFISC0001')).toEqual({ issuer: 'e-kassa', fiscalId: 'TESTFISC0001' });
+    expect(parseFiscalQr('https://monitoring.e-kassa.gov.az/#/index?doc=TESTFISC0001')).toEqual({ issuer: 'e-kassa', fiscalId: 'TESTFISC0001', document: 'TESTFISC0001' });
   });
 
   it('accepts the 44-char long form with NUL padding (as printed by some registers)', () => {
     const long = 'TESTFISC0001' + 'a1B2c3D4e5F6g7H8j9K1m2N3p4Q5r6S7';
-    expect(parseFiscalQr(`https://monitoring.e-kassa.gov.az/#/index?doc=${long}\u0000`)?.fiscalId).toBe('TESTFISC0001');
+    const ref = parseFiscalQr(`https://monitoring.e-kassa.gov.az/#/index?doc=${long}\u0000`)!;
+    expect(ref.fiscalId).toBe('TESTFISC0001');
+    expect(ref.document).toBe(long); // never shortened
+    expect(officialVerificationUrl(ref)).toBe(`https://monitoring.e-kassa.gov.az/#/index?doc=${long}`);
   });
 
   it('treats non-link text as an Epsilon purchase code', () => expect(parseFiscalQr('DEMO-0001')).toBeNull());

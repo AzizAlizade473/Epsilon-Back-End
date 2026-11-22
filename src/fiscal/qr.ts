@@ -11,7 +11,12 @@
  * Only this observed shape is accepted. Widen it only from real decoded samples.
  */
 
-export type FiscalRef = { issuer: 'e-kassa'; fiscalId: string };
+/**
+ * `fiscalId` is the 12-char receipt identity (dedup key). `document` is the complete
+ * `doc` value exactly as encoded (12 or 44 chars): use it, never `fiscalId`, to build
+ * the official verification URL.
+ */
+export type FiscalRef = { issuer: 'e-kassa'; fiscalId: string; document: string };
 
 export type QrErrorCode =
   | 'QR_EMPTY'
@@ -69,8 +74,12 @@ export function parseFiscalQr(raw: string): FiscalRef | null {
   const hashQuery = url.hash.includes('?') ? url.hash.slice(url.hash.indexOf('?') + 1) : '';
   const id = findId(url.searchParams) ?? findId(new URLSearchParams(hashQuery));
   if (!id || !DOC.test(id)) throw new QrError('QR_NO_FISCAL_ID');
-  return { issuer: 'e-kassa', fiscalId: id.slice(0, FISCAL_ID_LENGTH) };
+  return { issuer: 'e-kassa', fiscalId: id.slice(0, FISCAL_ID_LENGTH), document: id };
 }
+
+/** The official e-kassa verification page for a parsed QR (full document identifier). */
+export const officialVerificationUrl = (ref: FiscalRef) =>
+  `https://monitoring.e-kassa.gov.az/#/index?doc=${encodeURIComponent(ref.document)}`;
 
 /** For logs and responses: never print a whole fiscal ID. */
 export const maskFiscalId = (id: string) => `${id.slice(0, 2)}…${id.slice(-2)}`;
