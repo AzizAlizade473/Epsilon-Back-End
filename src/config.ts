@@ -19,7 +19,13 @@ const schema = z
     /** Comma-separated browser origins allowed to call the API (web build). Empty = none. */
     CORS_ORIGINS: z.string().default(''),
     /** `console` prints OTP codes to the server log (development only). */
-    SMS_PROVIDER: z.enum(['console', 'none']).default('console'),
+    /** `gmail`: demo only, login codes are e-mailed to DEMO_OTP_TO instead of sent by SMS. */
+    SMS_PROVIDER: z.enum(['console', 'gmail', 'none']).default('console'),
+    GMAIL_USER: z.string().email().optional(),
+    /** A Google App Password (16 letters), never the account password. */
+    GMAIL_APP_PASSWORD: z.string().min(16).optional(),
+    /** Inbox that receives every demo login code (defaults to GMAIL_USER). */
+    DEMO_OTP_TO: z.string().email().optional(),
     // Must not exceed the app's current version (app.json), or every install is told to update.
     MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('0.1.0'),
     MIN_AGE: z.coerce.number().int().positive().default(16),
@@ -45,6 +51,10 @@ const schema = z
       ctx.addIssue({ code: 'custom', path: ['FISCAL_PROVIDER'], message: 'fixture receipts are not allowed in production' });
     if (env.GEMINI_ENABLED && !env.GEMINI_API_KEY)
       ctx.addIssue({ code: 'custom', path: ['GEMINI_API_KEY'], message: 'GEMINI_ENABLED needs GEMINI_API_KEY' });
+    if (env.SMS_PROVIDER === 'gmail' && (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD))
+      ctx.addIssue({ code: 'custom', path: ['GMAIL_APP_PASSWORD'], message: 'SMS_PROVIDER=gmail needs GMAIL_USER and GMAIL_APP_PASSWORD' });
+    if (env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'gmail')
+      ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'e-mailed login codes are a demo, not allowed in production' });
     if (env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'console')
       ctx.addIssue({
         code: 'custom',

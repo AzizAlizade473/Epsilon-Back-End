@@ -1,6 +1,7 @@
 import { buildApp } from './app.js';
 import { googleVerifier } from './auth/google.js';
 import { consoleSms, disabledSms } from './auth/sms.js';
+import { gmailOtp } from './auth/email-otp.js';
 import { loadConfig } from './config.js';
 import { connect } from './db/client.js';
 import { loadFixtureDir } from './fiscal/fixtures.js';
@@ -14,7 +15,16 @@ const app = await buildApp(
     db,
     config,
     google: googleVerifier(config.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean)),
-    sms: config.SMS_PROVIDER === 'console' ? consoleSms : disabledSms,
+    sms:
+      config.SMS_PROVIDER === 'gmail'
+        ? gmailOtp({
+            GMAIL_USER: config.GMAIL_USER!,
+            GMAIL_APP_PASSWORD: config.GMAIL_APP_PASSWORD!,
+            DEMO_OTP_TO: config.DEMO_OTP_TO ?? config.GMAIL_USER!,
+          })
+        : config.SMS_PROVIDER === 'console'
+          ? consoleSms
+          : disabledSms,
     now: () => new Date(),
     // No authorised e-kassa integration exists yet. `fixture` serves local test receipts only.
     fiscal: config.FISCAL_PROVIDER === 'fixture' ? fixtureProvider(loadFixtureDir('private-fixtures/fiscal')) : unavailableProvider,
