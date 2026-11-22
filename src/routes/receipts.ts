@@ -11,7 +11,8 @@ import { idParam, parse } from '../lib/validation.js';
 import { loadUser, receiptView } from '../lib/views.js';
 import { noAdvisor } from '../fiscal/classify.js';
 import { unavailableProvider } from '../fiscal/provider.js';
-import { parseFiscalQr, QrError } from '../fiscal/qr.js';
+import { maskFiscalId, parseFiscalQr, QrError } from '../fiscal/qr.js';
+import { saveFailedImport } from '../fiscal/debug.js';
 import { importFiscalFromImage, obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
 import { ImageReadError, type ReceiptImageReader } from '../fiscal/gemini.js';
 import { validateImage } from '../fiscal/image.js';
@@ -112,7 +113,15 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
       }
       if (!ref) throw new ApiError(422, 'RECEIPT_UNSUPPORTED', 'Not an e-kassa receipt code');
       const images = body.images.map((i) => validateImage(i.data, i.mime, deps.config.MAX_RECEIPT_IMAGE_BYTES));
-      const fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now(), body.ocr ?? []);
+      const trace = (event: string) => request.log.info({ fiscal: maskFiscalId(ref.fiscalId) }, `receipt_import ${event}`);
+      let fiscal;
+      try {
+        fiscal = await importFiscalFromImage(deps.db, ref, body.source, images, deps.reader ?? disabledReader, deps.now(), body.ocr ?? [], trace);
+      } catch (error) {
+        if (deps.config.FISCAL_DEBUG_DIR && deps.config.NODE_ENV !== 'production')
+          saveFailedImport(deps.config.FISCAL_DEBUG_DIR, ref.fiscalId, body, error);
+        throw error;
+      }
       const out = await idempotent(deps, request, auth.userId, 'receipt.import', async (tx) => {
         const now = deps.now();
         const purchaseId = await userCopy(tx, auth.userId, fiscal, now);

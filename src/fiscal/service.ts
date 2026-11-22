@@ -88,12 +88,19 @@ export async function importFiscalFromImage(
   reader: ReceiptImageReader,
   now: Date,
   ocr: OcrPage[] = [],
+  /** Diagnostics without receipt content: counts and which parts could not be read. */
+  trace: (event: string) => void = () => undefined,
 ): Promise<FiscalRow> {
   const [known] = await db.select().from(fiscalReceipts).where(identity(ref));
   if (known) return known;
 
   // 1. On-device OCR text (no cloud call): used only when complete and consistent.
   const local = ocr.length ? readOcr(ocr, ref.fiscalId) : null;
+  trace(
+    `ocr pages=${ocr.length} lines=${ocr.reduce((n, p) => n + p.lines.length, 0)} result=${
+      !local ? 'none' : local.document ? 'complete' : `incomplete:${local.uncertain.join('|')}`
+    }`,
+  );
   if (local?.document) {
     if (!local.printedFiscalId || !sameFiscalId(local.printedFiscalId, ref.fiscalId))
       throw new ApiError(422, 'RECEIPT_IMAGE_MISMATCH', 'The image shows a different receipt');
@@ -108,10 +115,11 @@ export async function importFiscalFromImage(
   } catch (error) {
     if (!(error instanceof ImageReadError)) throw error;
     // AI off or out of quota: report what on-device OCR could not read, never guess.
-    if ((error.kind === 'disabled' || error.kind === 'quota') && local)
+    if ((error.kind === 'disabled' || error.kind === 'quota' || error.kind === 'busy') && local)
       throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, local.uncertain);
     if (error.kind === 'disabled') throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt image reading is turned off');
     if (error.kind === 'quota') throw new ApiError(503, 'RECEIPT_READER_QUOTA', 'Receipt reading limit reached for today');
+    if (error.kind === 'busy') throw new ApiError(503, 'RECEIPT_READER_BUSY', 'The receipt reader is busy, try again shortly', 30);
     if (error.kind === 'incomplete')
       throw new ApiError(422, 'RECEIPT_IMAGE_INCOMPLETE', 'Some parts of the receipt could not be read', undefined, error.fields);
     throw new ApiError(503, 'RECEIPT_READER_UNAVAILABLE', 'Receipt could not be read, try again', 10);

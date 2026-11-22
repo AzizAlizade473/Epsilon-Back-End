@@ -271,7 +271,7 @@ export function parseIssuedAt(date: string | null, time: string | null): string 
 
 export class ImageReadError extends Error {
   constructor(
-    readonly kind: 'disabled' | 'quota' | 'failed' | 'incomplete',
+    readonly kind: 'disabled' | 'quota' | 'busy' | 'failed' | 'incomplete',
     /** For `incomplete`: which parts could not be read reliably. */
     readonly fields: string[] = [],
   ) {
@@ -377,19 +377,27 @@ export function geminiImageReader(
   now: () => Date,
   generate: GenerateFn = realGenerate(config.GEMINI_API_KEY),
   log: (event: string) => void = () => undefined,
+  retryDelayMs = 2000,
 ): ReceiptImageReader {
   return {
     read: async (images, fiscalId, signal) => {
       if (!config.GEMINI_ENABLED || !config.GEMINI_API_KEY || config.GEMINI_MAX_CALLS_PER_RECEIPT < 1)
         throw new ImageReadError('disabled');
       if (!(await reserveCall(db, config.GEMINI_MAX_CALLS_PER_DAY, now()))) throw new ImageReadError('quota');
-      let text: string;
-      try {
-        text = await generate({ model: config.GEMINI_MODEL, prompt: READER_PROMPT, images, schema: wireJsonSchema, signal });
-      } catch (error) {
-        const status = error instanceof GenAiError ? error.status : undefined;
-        log(`gemini_read_failed:${status ?? (error as Error).name}`);
-        throw new ImageReadError(status === 429 ? 'quota' : 'failed');
+      let text: string | undefined;
+      // Google answers 500/503 when the model is briefly overloaded: one retry, same reservation.
+      for (let attempt = 1; text === undefined; attempt++) {
+        try {
+          text = await generate({ model: config.GEMINI_MODEL, prompt: READER_PROMPT, images, schema: wireJsonSchema, signal });
+        } catch (error) {
+          const status = error instanceof GenAiError ? error.status : undefined;
+          log(`gemini_read_failed:${status ?? (error as Error).name}:attempt${attempt}`);
+          if ((status === 500 || status === 503) && attempt < 2 && !signal.aborted) {
+            await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+            continue;
+          }
+          throw new ImageReadError(status === 429 ? 'quota' : status === 500 || status === 503 ? 'busy' : 'failed');
+        }
       }
       let json: unknown;
       try {

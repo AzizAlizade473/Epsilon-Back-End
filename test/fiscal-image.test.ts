@@ -2,6 +2,7 @@ import { count } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 import { branches, ledgerEntries, restaurants } from '../src/db/schema.js';
+import { ApiError as GenAiError } from '@google/genai';
 import { geminiImageReader, parseDecimal, parseIssuedAt, type GenerateFn, type WireReceipt } from '../src/fiscal/gemini.js';
 import { qr } from './fiscal-fixtures.js';
 import { setup } from './helpers.js';
@@ -87,6 +88,8 @@ async function env(answers: (() => unknown)[], cfg: Partial<{ enabled: boolean; 
     { GEMINI_ENABLED: cfg.enabled ?? true, GEMINI_API_KEY: 'test-key-not-real', GEMINI_MODEL: 'mock', GEMINI_MAX_CALLS_PER_DAY: cfg.perDay ?? 50, GEMINI_MAX_CALLS_PER_RECEIPT: 1 },
     () => t.clock.now,
     m.generate,
+    undefined,
+    0,
   );
   const t2 = await setup({}, { reader });
   return { t: t2, calls: m.calls };
@@ -185,6 +188,19 @@ describe('quota protection and failures (mocked)', () => {
     expect((await imp(t, a, 'TESTFISC0201')).status).toBe(503); // generic failure path for thrown non-API error
     expect((await imp(t, a, 'TESTFISC0201')).body.error.code).toBe('RECEIPT_READER_QUOTA'); // app cap reached
     expect(calls).toHaveLength(2);
+  });
+
+  it('retries once when Gemini is overloaded, then reports a busy reader (not a generic failure)', async () => {
+    const busy = () => {
+      throw new GenAiError({ message: 'overloaded', status: 503 });
+    };
+    const { t, calls } = await env([busy, () => tamWire(), busy, busy]);
+    const a = (await t.signInPhone('+994501112233')).session.accessToken as string;
+    expect((await imp(t, a, 'TESTFISC0201')).status).toBe(200); // second attempt succeeded
+    const b = await imp(t, a, 'TESTFISC0202');
+    expect(b.status).toBe(503);
+    expect(b.body.error.code).toBe('RECEIPT_READER_BUSY');
+    expect(calls).toHaveLength(4);
   });
 
   it('validates the uploaded image and the QR before any AI call', async () => {

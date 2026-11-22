@@ -35,8 +35,12 @@ const schema = z
     MAX_RECEIPT_IMAGE_BYTES: z.coerce.number().int().positive().max(12_000_000).default(6_000_000),
     /** Application cap protecting the free-tier quota (Google's own limits apply separately). */
     GEMINI_MAX_CALLS_PER_DAY: z.coerce.number().int().min(0).max(1000).default(5),
+    /** Development only: folder (git-ignored) where failed receipt imports are saved to improve the parser. */
+    FISCAL_DEBUG_DIR: z.string().min(1).optional(),
   })
   .superRefine((env, ctx) => {
+    if (env.NODE_ENV === 'production' && env.FISCAL_DEBUG_DIR)
+      ctx.addIssue({ code: 'custom', path: ['FISCAL_DEBUG_DIR'], message: 'Receipt debug dumps are development only' });
     if (env.NODE_ENV === 'production' && env.FISCAL_PROVIDER === 'fixture')
       ctx.addIssue({ code: 'custom', path: ['FISCAL_PROVIDER'], message: 'fixture receipts are not allowed in production' });
     if (env.GEMINI_ENABLED && !env.GEMINI_API_KEY)
