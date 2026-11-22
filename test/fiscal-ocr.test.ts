@@ -87,6 +87,73 @@ describe('on-device OCR → receipt (deterministic, no AI)', () => {
     expect(r.document!.items).toHaveLength(2);
   });
 
+  it('reads the official e-kassa image layout: bracketed unit, dropped quantity, wrapped name, misread labels', () => {
+    // Shape of a real official JPG read by ML Kit (synthetic ids): the lone "1" in the
+    // quantity column is missing, "(ədəd)" is read as "(ədad)", "№" as "Ne", "*ƏDV" as "*ƏV".
+    const rows = [
+      ['Obyektin adı: TAM STORE'],
+      ['Obyektin ünvanı: AZ1025 BAKI ŞƏHƏRİ'],
+      ['XƏTAİ RAYONU HƏSƏN SALMANİ ev.1'],
+      ['kodu: 1506475881-20001'],
+      ['Vergi ödəyicisinin adı: "TAM STORE"'],
+      ['MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ'],
+      ['VÖEN: 1506475881'],
+      ['Satış çeki Ne 462'],
+      ['Kassir', 'Tarix:', '13.11.2026'],
+      ['Vaxt:', '20:29:34'],
+      ['Məhsulun adı', 'Say Qiymət Cəmi'],
+      ['MOLOQORSK QAT. SUD 8.5 3 (ədad)', '1.79 1.79'],
+      ['40GR PET'],
+      ['*ƏV: 18%'],
+      ['Cəmi', '1.79'],
+      ['*ƏDV 18% = 0.27', '1.79'],
+      ['Nağdsız:', '1.79'],
+      ['Fiskal İD: TESTFISC0302'],
+    ];
+    const { document, uncertain } = readOcr([page(rows)], 'TESTFISC0302');
+    expect(uncertain).toEqual([]);
+    expect(document!.merchant).toMatchObject({
+      displayName: 'TAM STORE',
+      legalName: 'TAM STORE MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ',
+      voen: '1506475881',
+      objectCode: '1506475881-20001',
+      address: 'AZ1025 BAKI ŞƏHƏRİ XƏTAİ RAYONU HƏSƏN SALMANİ ev.1',
+    });
+    expect(document!.receipt).toMatchObject({ number: '462', issuedAt: '2026-11-13T20:29:34+04:00', totalMinor: 179 });
+    expect(document!.items).toEqual([
+      expect.objectContaining({
+        originalName: 'MOLOQORSK QAT. SUD 8.5 3 40GR PET',
+        quantityMilli: 1000, // derived: 1.79 ÷ 1.79, exact
+        unit: 'ədəd',
+        unitPriceMinor: 179,
+        lineTotalMinor: 179,
+      }),
+    ]);
+  });
+
+  it('derives a dropped quantity only when total ÷ price is exact, and keeps printed quantities', () => {
+    const base = [
+      ['Obyektin adı: CAFE TEST'],
+      ['Satış çeki № 7'],
+      ['Tarix: 01.12.2026', 'Vaxt: 12:00:00'],
+      ['Məhsulun adı', 'Say Qiymət Cəmi'],
+    ];
+    const tail = [['Fiskal İD: TESTFISC0303']];
+    const ok = readOcr(
+      [page([...base, ['ÇAY (porsiya)', '2.00 6.00'], ['PAXLAVA', '2 1.50 3.00'], ['Cəmi', '9.00'], ...tail])],
+      'TESTFISC0303',
+    );
+    expect(ok.uncertain).toEqual([]);
+    expect(ok.document!.items.map((i) => [i.originalName, i.quantityMilli, i.unit])).toEqual([
+      ['ÇAY', 3000, 'porsiya'],
+      ['PAXLAVA', 2000, null],
+    ]);
+    // 1.00 ÷ 0.30 is not exact: never guessed.
+    const bad = readOcr([page([...base, ['ÇAY (porsiya)', '0.30 1.00'], ['Cəmi', '1.00'], ...tail])], 'TESTFISC0303');
+    expect(bad.document).toBeNull();
+    expect(bad.uncertain).toContain('line 1');
+  });
+
   it('reports what is missing or inconsistent instead of guessing', () => {
     const noTotal = TAM_ROWS.filter((row) => !row[0]!.startsWith('YEKUN'));
     expect(readOcr([page(noTotal)], 'TESTFISC0301').uncertain).toContain('total');

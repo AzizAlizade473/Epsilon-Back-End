@@ -69,10 +69,26 @@ export function mergeParts(parts: string[][]): string[] {
 const MONEY = String.raw`-?\d{1,7}[.,]\d{2}`;
 const QTY = String.raw`\d{1,6}(?:[.,]\d{1,3})?`;
 const UNITS = String.raw`ədəd|əd|ad|ed|kq|kg|qr|gr|lt|l|porsiya|pors|ədəd\.`;
-/** "<name> [unit] <qty> <price> <total>" at the end of a row. */
-const ITEM_ROW = new RegExp(String.raw`^(.*?)\s+(?:(${UNITS})\.?\s+)?(${QTY})\s+(${MONEY})\s+(${MONEY})\s*$`, 'iu');
+/**
+ * "<name> [unit|(unit)] [qty] <price> <total>" at the end of a row. The official e-kassa
+ * image prints the unit in brackets ("(ədəd)") and its lone quantity digit is the token
+ * OCR most often drops, so the quantity is optional here and derived exactly below.
+ */
+const ITEM_ROW = new RegExp(
+  String.raw`^(.*?)\s+(?:(${UNITS})\.?\s+|\(([^\s()]{1,10})\)\s*)?(?:(${QTY})\s+)?(${MONEY})\s+(${MONEY})\s*$`,
+  'iu',
+);
+/** OCR variants of the printed unit "ədəd" ("ədad", "edəd", …). */
+const unitOf = (raw: string | undefined) =>
+  !raw ? null : /^[əea]d[əea]d\.?$/iu.test(raw) ? 'ədəd' : raw.toLocaleLowerCase('az');
+/** Quantity = total ÷ unit price, only when that division is exact to 3 decimals. */
+function exactQuantityMilli(unitPriceMinor: number, lineTotalMinor: number): number | null {
+  if (unitPriceMinor <= 0) return null;
+  const milli = (lineTotalMinor * 1000) / unitPriceMinor;
+  return Number.isInteger(milli) && milli > 0 ? milli : null;
+}
 const UNIT_ONLY = new RegExp(String.raw`^(?:${UNITS})\.?$`, 'iu');
-const SUB_ROW = /^\*?\s*(ƏDV|EDV|Ticarət əlavəsi|Ticaret elavesi|Endirim|Barkod|\d{8,14}$)/iu;
+const SUB_ROW = /^\*?\s*(ƏDV|EDV|Ticarət əlavəsi|Ticaret elavesi|Endirim|Barkod|\d{8,14}$)|^\*\s*[ƏE]?D?V\s*[:\d]/iu;
 const HEADER = /(Mal[ıi]n ad[ıi]|M[əe]hsulun ad[ıi]|Miqdar.*Qiym[əe]t)/iu;
 const TOTAL = new RegExp(String.raw`^(?:YEKUN\s+M[ƏE]BL[ƏE][ĞG]|C[ƏE]M[İI]|YEKUN)\b.*?(${MONEY})\s*(?:AZN|₼)?\s*$`, 'iu');
 
@@ -84,6 +100,18 @@ const find = (rows: string[], re: RegExp) => {
   return null;
 };
 
+/** A labelled value plus the rows it wraps onto (at most two), while `continues` accepts them. */
+function withContinuation(rows: string[], re: RegExp, continues: (row: string) => boolean): string | null {
+  const index = rows.findIndex((r) => re.test(r));
+  if (index < 0) return null;
+  const parts = [re.exec(rows[index]!)![1]!.trim()];
+  for (const next of rows.slice(index + 1, index + 3)) {
+    if (!next.trim() || !continues(next)) break;
+    parts.push(next.trim());
+  }
+  return parts.join(' ');
+}
+
 export type OcrResult = { document: FiscalDocument | null; printedFiscalId: string | null; uncertain: string[] };
 
 /** Rows → normalized receipt (or the list of what could not be read). */
@@ -91,11 +119,16 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
   const uncertain: string[] = [];
   const printedFiscalId = find(rows, /Fis(?:c|k)al\s*[İIı]D\s*[:.]?\s*([A-Za-z0-9]{12})/iu);
   const objectName = find(rows, /Obyektin ad[ıi]\s*[:.]?\s*(.+)$/iu);
-  const legalName = find(rows, /Vergi ödəyicisinin ad[ıi]\s*[:.]?\s*(.+)$/iu);
+  const legalName = withContinuation(rows, /Vergi ödəyicisinin ad[ıi]\s*[:.]?\s*(.+)$/iu, (next) =>
+    /(MƏHDUD|MƏSULİYYƏT|CƏMİYYƏT|MMC|ASC|QSC)/iu.test(next),
+  )?.replace(/^"(.*)"(\s|$)/u, '$1$2').trim() ?? null;
   const voen = find(rows, /V[ÖO]EN\s*[:.]?\s*(\d{10})\b/iu);
-  const objectCode = find(rows, /Obyektin kodu\s*[:.]?\s*([0-9]{10}-[0-9]+)/iu);
-  const address = find(rows, /Obyektin ünvan[ıi]\s*[:.]?\s*(.+)$/iu);
-  const number = find(rows, /(?:Satış çeki|Satis ceki|Çek)\s*№\s*(\d+)/iu);
+  // The label can wrap or be misread ("Obyektin kod." + "kodu: …"); the value shape is distinctive.
+  const objectCode = find(rows, /kodu\s*[:.]?\s*([0-9]{10}-[0-9]+)/iu);
+  // Wrapped address lines follow until the next labelled row.
+  const address = withContinuation(rows, /Obyektin ünvan[ıi]\s*[:.]?\s*(.+)$/iu, (next) => !/[:№]|Obyektin|Vergi/iu.test(next));
+  // "№" is often read as "Ne", "No" or "N°".
+  const number = find(rows, /(?:Satış çeki|Satis ceki|Çek)\s*(?:№|N[eo°º]\.?)\s*(\d+)/iu);
   const date = find(rows, /\b(\d{2}[./]\d{2}[./]\d{4})\b/u);
   const time = find(rows, /\b(\d{2}:\d{2}(?::\d{2})?)\b/u);
   const cashless = find(rows, new RegExp(String.raw`Nağdsız\s*[:.]?\s*(${MONEY})`, 'iu'));
@@ -122,14 +155,19 @@ export function parseReceiptRows(rows: string[], fiscalId: string): OcrResult {
       const m = ITEM_ROW.exec(row);
       if (m) {
         let tail = m[1]!.replace(/^#\d+\s*/, '').trim();
-        let unit = m[2] ?? null;
+        let unit = unitOf(m[2] ?? m[3]);
         // "<unit> <qty> <price> <total>" under a name printed on the row above.
         if (!unit && UNIT_ONLY.test(tail)) [unit, tail] = [tail, ''];
         const name = [...pendingName, tail].join(' ').replace(/\s+/g, ' ').trim();
         pendingName = [];
-        const quantityMilli = parseDecimal(m[3]!, 3);
-        const unitPriceMinor = parseDecimal(m[4]!, 2);
-        const lineTotalMinor = parseDecimal(m[5]!, 2);
+        const unitPriceMinor = parseDecimal(m[5]!, 2);
+        const lineTotalMinor = parseDecimal(m[6]!, 2);
+        // A printed quantity is kept; a dropped one is derived only when total ÷ price is exact.
+        const quantityMilli = m[4]
+          ? parseDecimal(m[4], 3)
+          : unitPriceMinor !== null && lineTotalMinor !== null
+            ? exactQuantityMilli(unitPriceMinor, lineTotalMinor)
+            : null;
         if (!name || quantityMilli === null || quantityMilli <= 0 || unitPriceMinor === null || lineTotalMinor === null) {
           uncertain.push(`line ${items.length + 1}`);
           continue;
