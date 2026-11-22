@@ -16,10 +16,14 @@ export function gmailOtp(config: { GMAIL_USER: string; GMAIL_APP_PASSWORD: strin
     console.info(`[dev-sms] OTP for ${phone}: ${code}`);
     try {
       await transport.sendMail({
-      from: `Epsilon <${config.GMAIL_USER}>`,
-      to: config.DEMO_OTP_TO,
-      subject: `Epsilon kodu: ${code}`,
-      text: `Epsilon giriş kodunuz: ${code}\n\nKod 5 dəqiqə etibarlıdır. Telefon: ••${phone.slice(-2)}\n\nBu demo e-poçtudur; real istifadədə kod SMS ilə gəlir.`,
-    });
+        from: `Epsilon <${config.GMAIL_USER}>`,
+        to: config.DEMO_OTP_TO,
+        subject: `Epsilon kodu: ${code}`,
+        text: `Epsilon giriş kodunuz: ${code}\n\nTelefon: ••${phone.slice(-2)}\n\nBu demo e-poçtudur; real istifadədə kod SMS ilə gəlir.`,
+      });
+    } catch (error) {
+      // Never fail the login request over the demo mail: the code is in the log above.
+      console.warn(`[demo-otp-mail] not sent: ${(error as Error).message}`);
+    }
   };
 }
