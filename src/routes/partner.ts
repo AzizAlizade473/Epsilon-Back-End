@@ -34,8 +34,8 @@ export async function partnerRoutes(app: FastifyInstance, deps: Deps) {
     if (!/^[A-Za-z0-9]{12}$/.test(fiscalId)) throw new ApiError(422, 'VALIDATION_FAILED', 'Invalid fields: fiscalId');
     const problems = integrityProblems(doc);
     if (problems.length) throw new ApiError(422, 'RECEIPT_VERIFICATION_FAILED', 'Receipt does not add up', undefined, problems);
-    // A partner may only send its own receipts.
-    if (partner.voen && doc.merchant.voen && partner.voen !== doc.merchant.voen)
+    // A partner may only send its own receipts: its VOEN must be on file and printed on the receipt.
+    if (!partner.voen || doc.merchant.voen !== partner.voen)
       throw new ApiError(403, 'FORBIDDEN', 'Receipt belongs to another taxpayer');
 
     const [branch] = doc.merchant.objectCode

@@ -236,12 +236,13 @@ export async function userCopy(tx: Tx, userId: string, fiscal: FiscalRow, now: D
   if (lines.length)
     await tx.insert(purchaseItems).values(
       lines.map((i) => {
-        const whole = i.quantityMilli % 1000 === 0;
+        // Exact only when quantity × price is what was charged (no line discount, no rounding).
+        const whole = i.quantityMilli % 1000 === 0 && (i.quantityMilli / 1000) * i.unitPriceMinor === i.lineTotalMinor;
         return {
           purchaseId: created.id,
           lineNo: i.lineNo,
           name: i.normalizedName,
-          // Weighed lines (0.37 kq) are stored as 1 × line total so price × quantity stays exact.
+          // Weighed or discounted lines are stored as 1 × line total, so cashback follows what was paid.
           quantity: whole ? i.quantityMilli / 1000 : 1,
           unitPriceMinor: whole ? i.unitPriceMinor : i.lineTotalMinor,
         };
