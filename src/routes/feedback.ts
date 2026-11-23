@@ -16,7 +16,7 @@ import {
 import { ApiError } from '../errors.js';
 import { idempotent } from '../lib/idempotency.js';
 import { rewardMinor } from '../lib/money.js';
-import { decodeCursor, encodeCursor, pageQuery, parse } from '../lib/validation.js';
+import { decodeTimeCursor, encodeCursor, pageQuery, parse } from '../lib/validation.js';
 import { loadUser, rewardEligible } from '../lib/views.js';
 import { claimLine, eligibility } from '../fiscal/service.js';
 
@@ -117,7 +117,7 @@ export async function feedbackRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get('/feedback', { config: { auth: true } }, async (request) => {
     const query = parse(pageQuery, request.query);
-    const after = decodeCursor(query.cursor);
+    const after = decodeTimeCursor(query.cursor);
     const userId = request.auth!.userId;
     const rows = await deps.db
       .select({
@@ -138,8 +138,8 @@ export async function feedbackRoutes(app: FastifyInstance, deps: Deps) {
           eq(feedback.userId, userId),
           after
             ? or(
-                lt(feedback.createdAt, new Date(after[0])),
-                and(eq(feedback.createdAt, new Date(after[0])), lt(feedback.id, after[1])),
+                lt(feedback.createdAt, after[0]),
+                and(eq(feedback.createdAt, after[0]), lt(feedback.id, after[1])),
               )
             : undefined,
         ),

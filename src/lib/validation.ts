@@ -51,5 +51,14 @@ export function decodeCursor(cursor: string | undefined): [string, string] | nul
   }
 }
 
+/** A keyset cursor sorted by time. A forged sort value is a 422, never an invalid Date reaching SQL. */
+export function decodeTimeCursor(cursor: string | undefined): [Date, string] | null {
+  const after = decodeCursor(cursor);
+  if (!after) return null;
+  const at = new Date(after[0]);
+  if (Number.isNaN(at.getTime())) throw new ApiError(422, 'VALIDATION_FAILED', 'Invalid cursor');
+  return [at, after[1]];
+}
+
 /** Optional inbox for an e-mailed login code (SMS_PROVIDER=gmail); stored lower-case. */
 export const emailSchema = z.string().trim().toLowerCase().email().max(254).optional();

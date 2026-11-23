@@ -4,7 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import type { Deps } from '../context.js';
 import { branches, ledgerEntries, purchaseItems, restaurants } from '../db/schema.js';
 import { notFound } from '../errors.js';
-import { decodeCursor, encodeCursor, idParam, pageQuery, parse } from '../lib/validation.js';
+import { decodeTimeCursor, encodeCursor, idParam, pageQuery, parse } from '../lib/validation.js';
 import { transactionColumns, transactionView } from '../lib/views.js';
 
 /** Balance is always derived from the ledger, never stored separately. */
@@ -36,15 +36,15 @@ export async function walletRoutes(app: FastifyInstance, deps: Deps) {
 
   app.get('/wallet/transactions', authed, async (request) => {
     const query = parse(pageQuery, request.query);
-    const after = decodeCursor(query.cursor);
+    const after = decodeTimeCursor(query.cursor);
     const rows = await transactionsQuery(deps)
       .where(
         and(
           eq(ledgerEntries.userId, request.auth!.userId),
           after
             ? or(
-                lt(ledgerEntries.createdAt, new Date(after[0])),
-                and(eq(ledgerEntries.createdAt, new Date(after[0])), lt(ledgerEntries.id, after[1])),
+                lt(ledgerEntries.createdAt, after[0]),
+                and(eq(ledgerEntries.createdAt, after[0]), lt(ledgerEntries.id, after[1])),
               )
             : undefined,
         ),

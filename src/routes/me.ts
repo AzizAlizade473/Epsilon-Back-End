@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, or } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -74,11 +74,15 @@ export async function meRoutes(app: FastifyInstance, deps: Deps) {
       throw new ApiError(403, 'REAUTH_REQUIRED', 'Sign in again to delete the account');
     const out = await idempotent(deps, request, auth.userId, 'account.delete', async (tx) => {
       const now = deps.now();
+      const [me] = await tx.select({ phone: users.phone }).from(users).where(eq(users.id, auth.userId));
       await tx.update(sessions).set({ revokedAt: now }).where(eq(sessions.userId, auth.userId));
       await tx.delete(authIdentities).where(eq(authIdentities.userId, auth.userId));
       await tx.delete(devices).where(eq(devices.userId, auth.userId));
       await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, auth.userId));
-      await tx.delete(otpChallenges).where(eq(otpChallenges.userId, auth.userId));
+      // Sign-in challenges carry the phone (and e-mail) but no user id.
+      await tx
+        .delete(otpChallenges)
+        .where(me?.phone ? or(eq(otpChallenges.userId, auth.userId), eq(otpChallenges.phone, me.phone)) : eq(otpChallenges.userId, auth.userId));
       // Personal data is erased; feedback and ledger rows stay (financial records)
       // attached to the anonymised user. shortcut: retention policy is an owner decision.
       await tx
