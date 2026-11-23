@@ -22,7 +22,7 @@ export async function createChallenge(
   deps: Deps,
   tx: Db | Tx,
   input: { phone: string; purpose: Purpose; userId?: string },
-): Promise<{ expiresAt: string; retryAfterSeconds: number }> {
+): Promise<{ expiresAt: string; retryAfterSeconds: number; delivery?: 'email' }> {
   const now = deps.now();
   // Serialise challenge creation per phone so concurrent requests cannot skip the limits.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.phone}))`);
@@ -59,7 +59,12 @@ export async function createChallenge(
     createdAt: now,
   });
   await deps.sms(input.phone, code);
-  return { expiresAt: expiresAt.toISOString(), retryAfterSeconds: OTP_RESEND_SECONDS };
+  return {
+    expiresAt: expiresAt.toISOString(),
+    retryAfterSeconds: OTP_RESEND_SECONDS,
+    // Tells the app where to look: the demo provider e-mails codes instead of texting them.
+    ...(deps.config.SMS_PROVIDER === 'gmail' ? { delivery: 'email' as const } : {}),
+  };
 }
 
 /** Checks a code against the latest open challenge and consumes it on success.

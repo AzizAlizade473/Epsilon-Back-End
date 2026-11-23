@@ -32,6 +32,19 @@ describe('phone OTP sign-in', () => {
     expect(b.user.id).toBe(a.user.id);
   });
 
+  it('says where the code went: SMS by default, e-mail with the demo Gmail provider', async () => {
+    const sms = await t.call('POST', '/auth/otp/request', { body: { phone: PHONE } });
+    expect(sms.status).toBe(200);
+    expect(sms.body).not.toHaveProperty('delivery');
+    const demo = await setup({
+      SMS_PROVIDER: 'gmail',
+      GMAIL_USER: 'demo@example.com',
+      GMAIL_APP_PASSWORD: 'abcdabcdabcdabcd',
+    });
+    const mail = await demo.call('POST', '/auth/otp/request', { body: { phone: PHONE } });
+    expect(mail.body).toMatchObject({ delivery: 'email', retryAfterSeconds: expect.any(Number) });
+  });
+
   it('stores only a hash of the code', async () => {
     await t.call('POST', '/auth/otp/request', { body: { phone: PHONE } });
     const code = t.sent.at(-1)!.code;
