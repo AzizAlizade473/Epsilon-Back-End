@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 
 import type { Deps } from '../context.js';
 import type { Db, Tx } from '../db/client.js';
@@ -38,6 +38,17 @@ export function maskEmail(email: string) {
   return `${email.slice(0, 1)}***${email.slice(at)}`;
 }
 
+/** E-mailed codes: an inbox gets no more than a phone does, and the sending account has a
+ * daily cap, so typing new phone numbers can neither spam one address nor burn the quota.
+ * shortcut: the advisory lock is per phone, so parallel requests may overshoot by a few. */
+async function checkEmailQuota(deps: Deps, tx: Db | Tx, email: string, now: Date) {
+  const since = (ms: number) => gt(otpChallenges.createdAt, new Date(now.getTime() - ms));
+  const [inbox] = await tx.select({ n: count() }).from(otpChallenges).where(and(eq(otpChallenges.email, email), since(3_600_000)));
+  if ((inbox?.n ?? 0) >= OTP_MAX_PER_HOUR) throw new ApiError(429, 'RATE_LIMITED', 'Too many codes requested', 3600);
+  const [day] = await tx.select({ n: count() }).from(otpChallenges).where(and(isNotNull(otpChallenges.email), since(86_400_000)));
+  if ((day?.n ?? 0) >= deps.config.OTP_EMAIL_MAX_PER_DAY) throw new ApiError(429, 'RATE_LIMITED', 'Too many codes requested', 3600);
+}
+
 /** Creates a challenge and sends the code. The response is the same whether or
  * not the phone has an account (no enumeration). Rate-limited per phone. */
 export async function createChallenge(
@@ -70,6 +81,7 @@ export async function createChallenge(
     );
   if ((recent?.n ?? 0) >= OTP_MAX_PER_HOUR)
     throw new ApiError(429, 'RATE_LIMITED', 'Too many codes requested', 3600);
+  if (email) await checkEmailQuota(deps, tx, email, now);
 
   const code = randomOtp();
   const expiresAt = new Date(now.getTime() + OTP_TTL_SECONDS * 1000);

@@ -18,12 +18,17 @@ const schema = z
     GOOGLE_CLIENT_IDS: z.string().default(''),
     /** Comma-separated browser origins allowed to call the API (web build). Empty = none. */
     CORS_ORIGINS: z.string().default(''),
+    /** Comma-separated reverse-proxy addresses whose X-Forwarded-For is trusted (e.g. `127.0.0.1` behind Caddy).
+     * Empty = the socket address is the client. Without it every client behind the proxy shares one rate-limit budget. */
+    TRUST_PROXY: z.string().default(''),
     /** `console` prints OTP codes to the server log (development only). */
     /** `gmail`: demo only, login codes are e-mailed to the account owner instead of sent by SMS. */
     SMS_PROVIDER: z.enum(['console', 'gmail', 'none']).default('console'),
     GMAIL_USER: z.string().email().optional(),
     /** A Google App Password (16 letters), never the account password. */
     GMAIL_APP_PASSWORD: z.string().min(16).optional(),
+    /** Cap on e-mailed login codes per 24 h, below Gmail's own sending limit (about 500 a day). */
+    OTP_EMAIL_MAX_PER_DAY: z.coerce.number().int().min(1).max(2000).default(400),
     // Must not exceed the app's current version (app.json), or every install is told to update.
     MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('0.1.0'),
     MIN_AGE: z.coerce.number().int().positive().default(16),

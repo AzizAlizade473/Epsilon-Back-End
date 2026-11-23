@@ -24,8 +24,11 @@ declare module 'fastify' {
 const REQUEST_ID = /^[\w-]{1,128}$/;
 
 export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
+  const proxies = deps.config.TRUST_PROXY.split(',').map((s) => s.trim()).filter(Boolean);
   const app = Fastify({
     bodyLimit: 16 * 1024,
+    // request.ip (rate-limit key) is the real client only when the proxy in front is named.
+    trustProxy: proxies.length ? proxies : false,
     // Never log bodies (phones, OTPs, comments) or auth headers.
     logger: options.logger
       ? { redact: ['req.headers.authorization'], serializers: { req: (r) => ({ method: r.method, url: r.routeOptions?.url ?? 'unknown' }) } }
