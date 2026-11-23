@@ -10,7 +10,8 @@ import type { SmsSender } from './sms.js';
 export function gmailOtp(config: { GMAIL_USER: string; GMAIL_APP_PASSWORD: string; DEMO_OTP_TO: string }): SmsSender {
   const transport = createTransport({
     service: 'gmail',
-    auth: { user: config.GMAIL_USER, pass: config.GMAIL_APP_PASSWORD },
+    // Google shows App Passwords as "abcd efgh ijkl mnop"; the spaces are not part of it.
+    auth: { user: config.GMAIL_USER, pass: config.GMAIL_APP_PASSWORD.replace(/\s/g, '') },
   });
   return async (phone, code) => {
     console.info(`[dev-sms] OTP for ${phone}: ${code}`);
