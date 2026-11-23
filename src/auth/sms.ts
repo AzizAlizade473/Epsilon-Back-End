@@ -1,4 +1,5 @@
-export type SmsSender = (phone: string, code: string) => Promise<void>;
+/** `email`: set when the code goes by e-mail (SMS_PROVIDER=gmail) instead of SMS. */
+export type SmsSender = (phone: string, code: string, email?: string) => Promise<void>;
 
 /** Development only: prints the code so you can type it into the app.
  * config.ts refuses SMS_PROVIDER=console in production. */

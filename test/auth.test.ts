@@ -36,13 +36,37 @@ describe('phone OTP sign-in', () => {
     const sms = await t.call('POST', '/auth/otp/request', { body: { phone: PHONE } });
     expect(sms.status).toBe(200);
     expect(sms.body).not.toHaveProperty('delivery');
-    const demo = await setup({
-      SMS_PROVIDER: 'gmail',
-      GMAIL_USER: 'demo@example.com',
-      GMAIL_APP_PASSWORD: 'abcdabcdabcdabcd',
+    expect(t.sent.at(-1)?.email).toBeUndefined();
+  });
+
+  describe('demo Gmail provider: each code goes to its owner', () => {
+    const gmail = { SMS_PROVIDER: 'gmail', GMAIL_USER: 'demo@example.com', GMAIL_APP_PASSWORD: 'abcdabcdabcdabcd' };
+
+    it('needs an e-mail for a new number and mails the code there', async () => {
+      const demo = await setup(gmail);
+      const missing = await demo.call('POST', '/auth/otp/request', { body: { phone: PHONE } });
+      expect(missing.status).toBe(400);
+      expect(missing.body.error.code).toBe('EMAIL_REQUIRED');
+
+      const mail = await demo.call('POST', '/auth/otp/request', { body: { phone: PHONE, email: ' Aysel@Gmail.com ' } });
+      expect(mail.body).toMatchObject({ delivery: 'email', sentTo: 'a***@gmail.com' });
+      expect(demo.sent.at(-1)).toMatchObject({ phone: PHONE, email: 'aysel@gmail.com' });
+
+      const verified = await demo.call('POST', '/auth/otp/verify', { body: { phone: PHONE, code: demo.sent.at(-1)!.code } });
+      expect(verified.status).toBe(200);
+      expect(verified.body.user).toMatchObject({ phone: PHONE, email: 'aysel@gmail.com' });
     });
-    const mail = await demo.call('POST', '/auth/otp/request', { body: { phone: PHONE } });
-    expect(mail.body).toMatchObject({ delivery: 'email', retryAfterSeconds: expect.any(Number) });
+
+    it("keeps sending an account's codes to its own e-mail, whatever is typed", async () => {
+      const demo = await setup(gmail);
+      await demo.call('POST', '/auth/otp/request', { body: { phone: PHONE, email: 'owner@gmail.com' } });
+      await demo.call('POST', '/auth/otp/verify', { body: { phone: PHONE, code: demo.sent.at(-1)!.code } });
+
+      demo.advance(61_000);
+      const other = await demo.call('POST', '/auth/otp/request', { body: { phone: PHONE, email: 'attacker@gmail.com' } });
+      expect(other.body).toMatchObject({ sentTo: 'o***@gmail.com' });
+      expect(demo.sent.at(-1)?.email).toBe('owner@gmail.com');
+    });
   });
 
   it('stores only a hash of the code', async () => {

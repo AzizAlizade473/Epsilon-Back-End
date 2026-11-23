@@ -6,6 +6,7 @@ export type ErrorCode =
   | 'SOCIAL_TOKEN_INVALID'
   | 'SOCIAL_EMAIL_UNVERIFIED'
   | 'OTP_INVALID'
+  | 'EMAIL_REQUIRED'
   | 'OTP_EXPIRED'
   | 'OTP_TOO_MANY'
   | 'PHONE_IN_USE'

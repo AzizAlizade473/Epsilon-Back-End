@@ -28,7 +28,7 @@ export async function setup(
     ...overrides,
   });
   const clock = { now: new Date('2026-11-13T10:00:00.000Z') };
-  const sent: { phone: string; code: string }[] = [];
+  const sent: { phone: string; code: string; email?: string }[] = [];
   const googleAccounts = new Map<string, GoogleIdentity>();
 
   const app = await buildApp({
@@ -36,7 +36,7 @@ export async function setup(
     config,
     now: () => new Date(clock.now),
     ...extra,
-    sms: async (phone, code) => void sent.push({ phone, code }),
+    sms: async (phone, code, email) => void sent.push({ phone, code, email }),
     google: async (idToken) => {
       const identity = googleAccounts.get(idToken);
       if (!identity) throw new ApiError(400, 'SOCIAL_TOKEN_INVALID');

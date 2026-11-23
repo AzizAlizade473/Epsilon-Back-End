@@ -2,7 +2,7 @@ import { and, count, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 
 import type { Deps } from '../context.js';
 import type { Db, Tx } from '../db/client.js';
-import { otpChallenges } from '../db/schema.js';
+import { authIdentities, otpChallenges, users } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { hmac, randomOtp, safeEqualHex } from '../lib/crypto.js';
 
@@ -16,14 +16,37 @@ type Purpose = (typeof otpChallenges.$inferInsert)['purpose'];
 const codeHash = (deps: Deps, phone: string, code: string) =>
   hmac(deps.config.OTP_SECRET, `${phone}:${code}`);
 
+/** The inbox for an e-mailed code. An account's saved e-mail always wins, so typing
+ * someone else's phone number never redirects their code; a new number (or an old
+ * account without an e-mail) uses the e-mail typed with it. */
+async function deliveryEmail(tx: Db | Tx, input: { phone: string; userId?: string; email?: string }) {
+  const [owner] = input.userId
+    ? await tx.select({ email: users.email }).from(users).where(eq(users.id, input.userId))
+    : await tx
+        .select({ email: users.email })
+        .from(authIdentities)
+        .innerJoin(users, eq(users.id, authIdentities.userId))
+        .where(and(eq(authIdentities.provider, 'phone'), eq(authIdentities.providerUserId, input.phone)));
+  const email = owner?.email ?? input.email;
+  if (!email) throw new ApiError(400, 'EMAIL_REQUIRED', 'An e-mail address is required to receive the code');
+  return email;
+}
+
+/** "a***@gmail.com": enough to recognise the inbox, not to read the address. */
+export function maskEmail(email: string) {
+  const at = email.lastIndexOf('@');
+  return `${email.slice(0, 1)}***${email.slice(at)}`;
+}
+
 /** Creates a challenge and sends the code. The response is the same whether or
  * not the phone has an account (no enumeration). Rate-limited per phone. */
 export async function createChallenge(
   deps: Deps,
   tx: Db | Tx,
-  input: { phone: string; purpose: Purpose; userId?: string },
-): Promise<{ expiresAt: string; retryAfterSeconds: number; delivery?: 'email' }> {
+  input: { phone: string; purpose: Purpose; userId?: string; email?: string },
+): Promise<{ expiresAt: string; retryAfterSeconds: number; delivery?: 'email'; sentTo?: string }> {
   const now = deps.now();
+  const email = deps.config.SMS_PROVIDER === 'gmail' ? await deliveryEmail(tx, input) : null;
   // Serialise challenge creation per phone so concurrent requests cannot skip the limits.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.phone}))`);
   const [last] = await tx
@@ -55,15 +78,16 @@ export async function createChallenge(
     purpose: input.purpose,
     userId: input.userId,
     codeHash: codeHash(deps, input.phone, code),
+    email,
     expiresAt,
     createdAt: now,
   });
-  await deps.sms(input.phone, code);
+  await deps.sms(input.phone, code, email ?? undefined);
   return {
     expiresAt: expiresAt.toISOString(),
     retryAfterSeconds: OTP_RESEND_SECONDS,
     // Tells the app where to look: the demo provider e-mails codes instead of texting them.
-    ...(deps.config.SMS_PROVIDER === 'gmail' ? { delivery: 'email' as const } : {}),
+    ...(email ? { delivery: 'email' as const, sentTo: maskEmail(email) } : {}),
   };
 }
 
@@ -73,7 +97,7 @@ export async function createChallenge(
 export async function consumeChallenge(
   deps: Deps,
   input: { phone: string; code: string; purpose: Purpose; userId?: string },
-): Promise<void> {
+): Promise<{ email: string | null }> {
   const now = deps.now();
   const [challenge] = await deps.db
     .select()
@@ -107,4 +131,5 @@ export async function consumeChallenge(
     .where(and(eq(otpChallenges.id, challenge.id), isNull(otpChallenges.consumedAt)))
     .returning({ id: otpChallenges.id });
   if (!consumed) throw new ApiError(400, 'OTP_EXPIRED', 'Code already used');
+  return { email: challenge.email };
 }

@@ -19,13 +19,11 @@ const schema = z
     /** Comma-separated browser origins allowed to call the API (web build). Empty = none. */
     CORS_ORIGINS: z.string().default(''),
     /** `console` prints OTP codes to the server log (development only). */
-    /** `gmail`: demo only, login codes are e-mailed to DEMO_OTP_TO instead of sent by SMS. */
+    /** `gmail`: demo only, login codes are e-mailed to the account owner instead of sent by SMS. */
     SMS_PROVIDER: z.enum(['console', 'gmail', 'none']).default('console'),
     GMAIL_USER: z.string().email().optional(),
     /** A Google App Password (16 letters), never the account password. */
     GMAIL_APP_PASSWORD: z.string().min(16).optional(),
-    /** Inbox that receives every demo login code (defaults to GMAIL_USER). */
-    DEMO_OTP_TO: z.string().email().optional(),
     // Must not exceed the app's current version (app.json), or every install is told to update.
     MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('0.1.0'),
     MIN_AGE: z.coerce.number().int().positive().default(16),

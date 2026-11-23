@@ -50,3 +50,6 @@ export function decodeCursor(cursor: string | undefined): [string, string] | nul
     throw new ApiError(422, 'VALIDATION_FAILED', 'Invalid cursor');
   }
 }
+
+/** Optional inbox for an e-mailed login code (SMS_PROVIDER=gmail); stored lower-case. */
+export const emailSchema = z.string().trim().toLowerCase().email().max(254).optional();

@@ -17,11 +17,7 @@ const app = await buildApp(
     google: googleVerifier(config.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean)),
     sms:
       config.SMS_PROVIDER === 'gmail'
-        ? gmailOtp({
-            GMAIL_USER: config.GMAIL_USER!,
-            GMAIL_APP_PASSWORD: config.GMAIL_APP_PASSWORD!,
-            DEMO_OTP_TO: config.DEMO_OTP_TO ?? config.GMAIL_USER!,
-          })
+        ? gmailOtp({ GMAIL_USER: config.GMAIL_USER!, GMAIL_APP_PASSWORD: config.GMAIL_APP_PASSWORD! })
         : config.SMS_PROVIDER === 'console'
           ? consoleSms
           : disabledSms,

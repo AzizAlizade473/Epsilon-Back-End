@@ -8,10 +8,10 @@ import type { Deps } from '../context.js';
 import type { Tx } from '../db/client.js';
 import { authIdentities, devices, users } from '../db/schema.js';
 import { ApiError } from '../errors.js';
-import { intentSchema, otpCodeSchema, parse, phoneSchema } from '../lib/validation.js';
+import { emailSchema, intentSchema, otpCodeSchema, parse, phoneSchema } from '../lib/validation.js';
 import { nextStep, userView } from '../lib/views.js';
 
-const otpRequestBody = z.object({ phone: phoneSchema, intent: intentSchema }).strict();
+const otpRequestBody = z.object({ phone: phoneSchema, intent: intentSchema, email: emailSchema }).strict();
 const otpVerifyBody = z
   .object({ phone: phoneSchema, code: otpCodeSchema, intent: intentSchema })
   .strict();
@@ -49,6 +49,8 @@ async function signIn(
   if (intent === 'register' && existing) throw new ApiError(409, 'ACCOUNT_EXISTS', 'Account exists');
 
   let user = existing?.user;
+  if (user && !user.email && identity.email)
+    [user] = await tx.update(users).set({ email: identity.email }).where(eq(users.id, user.id)).returning();
   if (!user) {
     const now = deps.now();
     [user] = await tx
@@ -84,18 +86,23 @@ export async function authRoutes(app: FastifyInstance, deps: Deps) {
   app.post('/auth/otp/request', limited, async (request) => {
     const body = parse(otpRequestBody, request.body);
     return deps.db.transaction((tx) =>
-      createChallenge(deps, tx, { phone: body.phone, purpose: body.intent ?? 'signin' }),
+      createChallenge(deps, tx, { phone: body.phone, purpose: body.intent ?? 'signin', email: body.email }),
     );
   });
 
   app.post('/auth/otp/verify', limited, async (request) => {
     const body = parse(otpVerifyBody, request.body);
-    await consumeChallenge(deps, { phone: body.phone, code: body.code, purpose: body.intent ?? 'signin' });
+    const { email } = await consumeChallenge(deps, {
+      phone: body.phone,
+      code: body.code,
+      purpose: body.intent ?? 'signin',
+    });
     return deps.db.transaction((tx) =>
       signIn(
         deps,
         tx,
-        { provider: 'phone', subject: body.phone, email: null, emailVerified: false },
+        // The code reached this inbox, so the e-mail is proven too.
+        { provider: 'phone', subject: body.phone, email, emailVerified: email !== null },
         body.intent,
         languageFrom(request),
       ),

@@ -84,6 +84,7 @@ export const otpChallenges = pgTable(
     purpose: otpPurpose('purpose').notNull(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
     codeHash: text('code_hash').notNull(), // HMAC-SHA256, never the code
+    email: text('email'), // where an e-mailed code went (SMS_PROVIDER=gmail); saved to a new account
     attempts: smallint('attempts').notNull().default(0),
     expiresAt: ts('expires_at').notNull(),
     consumedAt: ts('consumed_at'),

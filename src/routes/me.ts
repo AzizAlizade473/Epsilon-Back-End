@@ -14,7 +14,7 @@ import {
 } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { idempotent } from '../lib/idempotency.js';
-import { otpCodeSchema, parse, phoneSchema } from '../lib/validation.js';
+import { emailSchema, otpCodeSchema, parse, phoneSchema } from '../lib/validation.js';
 import { loadUser, nextStep, userView } from '../lib/views.js';
 
 /** Deletion needs a sign-in (OTP or Google) within this window. */
@@ -30,7 +30,7 @@ const profileBody = z
     language: z.enum(['az', 'en', 'ru']).optional(),
   })
   .strict();
-const phoneBody = z.object({ phone: phoneSchema }).strict();
+const phoneBody = z.object({ phone: phoneSchema, email: emailSchema }).strict();
 const phoneVerifyBody = z.object({ phone: phoneSchema, code: otpCodeSchema }).strict();
 const preferencesBody = z
   .object({ cashbackUpdates: z.boolean(), partnerUpdates: z.boolean() })
@@ -112,7 +112,12 @@ export async function meRoutes(app: FastifyInstance, deps: Deps) {
         .from(authIdentities)
         .where(and(eq(authIdentities.userId, auth.userId), eq(authIdentities.provider, 'phone')));
       if (own) throw new ApiError(409, 'IDENTITY_ALREADY_LINKED', 'Phone already linked');
-      const challenge = await createChallenge(deps, tx, { phone: body.phone, purpose: 'link', userId: auth.userId });
+      const challenge = await createChallenge(deps, tx, {
+        phone: body.phone,
+        purpose: 'link',
+        userId: auth.userId,
+        email: body.email,
+      });
       return { status: 200, body: challenge };
     });
     return reply.code(out.status).send(out.body);
