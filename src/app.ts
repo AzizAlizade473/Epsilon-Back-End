@@ -1,11 +1,11 @@
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
-import Fastify, { type FastifyError } from 'fastify';
+import Fastify from 'fastify';
 import { randomUUID } from 'node:crypto';
 
 import { authenticate } from './auth/session.js';
 import type { Deps } from './context.js';
-import { ApiError, mapDbError } from './errors.js';
+import { ApiError, apiErrorHandler } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
 import { feedbackRoutes } from './routes/feedback.js';
@@ -62,35 +62,14 @@ export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('X-Request-Id', request.id);
+    // The admin API lives only on its own loopback listener (src/admin), never on this public one.
+    if (/^\/admin(\/|\?|$)/i.test(request.url)) return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found', requestId: request.id } });
   });
   app.addHook('preHandler', async (request) => {
     if (request.routeOptions.config.auth) request.auth = await authenticate(deps, request);
   });
 
-  app.setErrorHandler((error: FastifyError | ApiError, request, reply) => {
-    let apiError: ApiError;
-    if (error instanceof ApiError) apiError = error;
-    else if (mapDbError(error)) apiError = mapDbError(error)!;
-    else if (error.statusCode === 429) apiError = new ApiError(429, 'RATE_LIMITED', 'Too many requests');
-    else if (error.statusCode && error.statusCode < 500)
-      // Malformed JSON, wrong content type, body too large, ...
-      apiError = new ApiError(error.statusCode === 413 ? 413 : 422, 'VALIDATION_FAILED', 'Malformed request');
-    else {
-      request.log.error({ err: error }, 'unhandled error');
-      apiError = new ApiError(500, 'INTERNAL', 'Internal error');
-    }
-    if (apiError.retryAfterSeconds !== undefined) reply.header('Retry-After', String(apiError.retryAfterSeconds));
-    return reply.code(apiError.status).send({
-      error: {
-        code: apiError.code,
-        message: apiError.message,
-        requestId: request.id,
-        ...(apiError.retryAfterSeconds !== undefined ? { retryAfterSeconds: apiError.retryAfterSeconds } : {}),
-        ...(apiError.fields?.length ? { fields: apiError.fields } : {}),
-        ...(apiError.details ? apiError.details : {}),
-      },
-    });
-  });
+  app.setErrorHandler(apiErrorHandler);
 
   app.setNotFoundHandler((request, reply) =>
     reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found', requestId: request.id } }),

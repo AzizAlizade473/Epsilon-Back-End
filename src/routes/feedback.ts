@@ -201,6 +201,7 @@ export async function feedbackRoutes(app: FastifyInstance, deps: Deps) {
     const rows = await reviews(
       deps.db,
       and(
+        // The author keeps seeing their own review even when moderation hides it from public views.
         eq(feedback.userId, userId),
         after
           ? or(lt(feedback.createdAt, after[0]), and(eq(feedback.createdAt, after[0]), lt(feedback.id, after[1])))

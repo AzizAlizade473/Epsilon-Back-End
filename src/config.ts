@@ -46,12 +46,33 @@ const schema = z
     GEMINI_MAX_CALLS_PER_DAY: z.coerce.number().int().min(0).max(1000).default(5),
     /** Development only: folder (git-ignored) where failed receipt imports are saved to improve the parser. */
     FISCAL_DEBUG_DIR: z.string().min(1).optional(),
+    /** Admin API (src/admin) on its own loopback listener. Off unless true. */
+    ADMIN_ENABLED: flag.default(false),
+    ADMIN_PORT: z.coerce.number().int().min(1).max(65535).default(3100),
+    /** Read-only Postgres role (src/db/admin-readonly-role.sql). Required in production. */
+    ADMIN_DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//, 'postgres:// URL required').optional(),
+    /** Cloudflare Zero Trust team domain, e.g. epsilon.cloudflareaccess.com. */
+    ADMIN_CF_TEAM_DOMAIN: z.string().regex(/^[a-z0-9.-]+\.[a-z]{2,}$/i, 'host name required').optional(),
+    ADMIN_CF_AUD: z.string().min(8).optional(),
+    /** Local-tunnel mode (SSH tunnel to the loopback listener, no Cloudflare): this identity is used for loopback requests without an Access JWT. Allowed in production. */
+    ADMIN_LOCAL_EMAIL: z.string().trim().toLowerCase().email().optional(),
+    /** Development only: same as ADMIN_LOCAL_EMAIL but refused in production. */
+    ADMIN_DEV_EMAIL: z.string().trim().toLowerCase().email().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.FISCAL_DEBUG_DIR)
       ctx.addIssue({ code: 'custom', path: ['FISCAL_DEBUG_DIR'], message: 'Receipt debug dumps are development only' });
     if (env.NODE_ENV === 'production' && env.FISCAL_PROVIDER === 'fixture')
       ctx.addIssue({ code: 'custom', path: ['FISCAL_PROVIDER'], message: 'fixture receipts are not allowed in production' });
+    if (env.NODE_ENV === 'production' && env.ADMIN_DEV_EMAIL)
+      ctx.addIssue({ code: 'custom', path: ['ADMIN_DEV_EMAIL'], message: 'admin development login is not allowed in production' });
+    if (env.ADMIN_ENABLED) {
+      if (env.NODE_ENV === 'production' && !env.ADMIN_DATABASE_URL)
+        ctx.addIssue({ code: 'custom', path: ['ADMIN_DATABASE_URL'], message: 'ADMIN_ENABLED needs ADMIN_DATABASE_URL in production' });
+      const access = (env.ADMIN_CF_TEAM_DOMAIN && env.ADMIN_CF_AUD) || env.ADMIN_LOCAL_EMAIL || env.ADMIN_DEV_EMAIL;
+      if (!access)
+        ctx.addIssue({ code: 'custom', path: ['ADMIN_CF_AUD'], message: 'ADMIN_ENABLED needs ADMIN_CF_TEAM_DOMAIN + ADMIN_CF_AUD, or ADMIN_LOCAL_EMAIL' });
+    }
     if (env.GEMINI_ENABLED && !env.GEMINI_API_KEY)
       ctx.addIssue({ code: 'custom', path: ['GEMINI_API_KEY'], message: 'GEMINI_ENABLED needs GEMINI_API_KEY' });
     if (env.SMS_PROVIDER === 'gmail' && (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD))

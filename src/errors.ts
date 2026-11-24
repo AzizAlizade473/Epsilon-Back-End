@@ -1,3 +1,5 @@
+import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
+
 /** Machine error codes understood by the app (src/services/http/errors.ts there).
  * Codes outside that list (NOT_FOUND, FORBIDDEN, ...) are opaque to the app and
  * fall back to HTTP-status handling, as the contract allows. */
@@ -81,4 +83,30 @@ export function mapDbError(error: unknown): ApiError | null {
   const constraint = uniqueViolation(error);
   if (constraint === null) return null;
   return uniqueViolations[constraint]?.() ?? new ApiError(409, 'CONFLICT', 'Conflict');
+}
+
+/** One error → JSON mapping for every Fastify instance (public API and admin API). */
+export function apiErrorHandler(error: FastifyError | ApiError, request: FastifyRequest, reply: FastifyReply) {
+  let apiError: ApiError;
+  if (error instanceof ApiError) apiError = error;
+  else if (mapDbError(error)) apiError = mapDbError(error)!;
+  else if (error.statusCode === 429) apiError = new ApiError(429, 'RATE_LIMITED', 'Too many requests');
+  else if (error.statusCode && error.statusCode < 500)
+    // Malformed JSON, wrong content type, body too large, ...
+    apiError = new ApiError(error.statusCode === 413 ? 413 : 422, 'VALIDATION_FAILED', 'Malformed request');
+  else {
+    request.log.error({ err: error }, 'unhandled error');
+    apiError = new ApiError(500, 'INTERNAL', 'Internal error');
+  }
+  if (apiError.retryAfterSeconds !== undefined) reply.header('Retry-After', String(apiError.retryAfterSeconds));
+  return reply.code(apiError.status).send({
+    error: {
+      code: apiError.code,
+      message: apiError.message,
+      requestId: request.id,
+      ...(apiError.retryAfterSeconds !== undefined ? { retryAfterSeconds: apiError.retryAfterSeconds } : {}),
+      ...(apiError.fields?.length ? { fields: apiError.fields } : {}),
+      ...(apiError.details ? apiError.details : {}),
+    },
+  });
 }

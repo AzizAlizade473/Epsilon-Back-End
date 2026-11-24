@@ -3,6 +3,7 @@ import type { Deps } from './context.js';
 import { googleVerifier } from './auth/google.js';
 import { consoleSms, disabledSms } from './auth/sms.js';
 import { gmailOtp } from './auth/email-otp.js';
+import { buildAdminApp, defaultStaticDir } from './admin/routes.js';
 import { loadConfig } from './config.js';
 import { connect } from './db/client.js';
 import { loadFixtureDir } from './fiscal/fixtures.js';
@@ -32,7 +33,9 @@ const deps: Deps = {
 };
 const app = await buildApp(deps, { logger: true });
 
+let adminApp: Awaited<ReturnType<typeof buildAdminApp>> | undefined;
 const shutdown = async () => {
+  await adminApp?.close();
   await app.close();
   await close();
   process.exit(0);
@@ -46,3 +49,19 @@ setInterval(() => {
 }, 30 * 60_000).unref();
 
 await app.listen({ port: config.PORT, host: config.HOST });
+
+// Admin API: a separate listener on loopback only (reached through cloudflared or an SSH tunnel).
+if (config.ADMIN_ENABLED) {
+  let ro = db;
+  if (config.ADMIN_DATABASE_URL) {
+    const conn = connect(config.ADMIN_DATABASE_URL);
+    ro = conn.db;
+    process.on('exit', () => void conn.close());
+  } else app.log.warn('ADMIN_DATABASE_URL is not set: admin analytics use the read-write pool (allowed outside production only)');
+  if (config.ADMIN_LOCAL_EMAIL) app.log.warn('admin local-tunnel mode is active: loopback requests without an Access JWT are trusted as ADMIN_LOCAL_EMAIL');
+  adminApp = await buildAdminApp(
+    { db, ro, config, now: () => new Date(), version: process.env.npm_package_version ?? '1.0.0' },
+    { logger: true, staticDir: defaultStaticDir() },
+  );
+  await adminApp.listen({ port: config.ADMIN_PORT, host: '127.0.0.1' });
+}

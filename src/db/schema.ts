@@ -317,6 +317,10 @@ export const feedback = pgTable(
     createdAt: createdAt(),
     /** Set when the author edits the review; createdAt keeps the original time. */
     updatedAt: ts('updated_at'),
+    /** Reversible admin moderation: hidden reviews leave every aggregate and public list; the text is never altered. */
+    hiddenAt: ts('hidden_at'),
+    hiddenReason: text('hidden_reason'),
+    hiddenBy: uuid('hidden_by').references(() => adminUsers.id),
   },
   (t) => [
     // One feedback per purchased item, globally.
@@ -448,4 +452,69 @@ export const notifications = pgTable(
     uniqueIndex('notifications_user_dedupe_key').on(t.userId, t.dedupeKey),
     index('notifications_user_created_idx').on(t.userId, t.createdAt),
   ],
+);
+
+// ---------------------------------------------------------------- admin (separate identity from consumers)
+
+export const adminRole = pgEnum('admin_role', ['super_admin', 'operations', 'analyst', 'partner']);
+export const adminStatus = pgEnum('admin_status', ['active', 'disabled']);
+
+/** Provisioned only by the CLI (npm run admin:add). Never created through the API. */
+export const adminUsers = pgTable(
+  'admin_users',
+  {
+    id: id(),
+    email: text('email').notNull(),
+    name: text('name').notNull(),
+    role: adminRole('role').notNull(),
+    status: adminStatus('status').notNull().default('active'),
+    /** Cloudflare Access identity id, pinned on first login. */
+    accessSub: text('access_sub'),
+    createdAt: createdAt(),
+    lastLoginAt: ts('last_login_at'),
+  },
+  (t) => [
+    uniqueIndex('admin_users_email_key').on(t.email),
+    uniqueIndex('admin_users_access_sub_key').on(t.accessSub),
+    check('admin_users_email_lower_check', sql`${t.email} = lower(${t.email})`),
+  ],
+);
+
+export const adminSessions = pgTable(
+  'admin_sessions',
+  {
+    id: id(),
+    adminId: uuid('admin_id')
+      .notNull()
+      .references(() => adminUsers.id),
+    tokenHash: text('token_hash').notNull(), // SHA-256
+    csrfHash: text('csrf_hash').notNull(), // SHA-256 of the CSRF secret
+    createdAt: createdAt(),
+    lastSeenAt: ts('last_seen_at').notNull(),
+    expiresAt: ts('expires_at').notNull(),
+    revokedAt: ts('revoked_at'),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+  },
+  (t) => [uniqueIndex('admin_sessions_token_hash_key').on(t.tokenHash), index('admin_sessions_admin_idx').on(t.adminId)],
+);
+
+/** Append-only: no code path updates or deletes rows. before/after never hold PII. */
+export const adminAudit = pgTable(
+  'admin_audit',
+  {
+    id: id(),
+    adminId: uuid('admin_id').references(() => adminUsers.id),
+    action: text('action').notNull(),
+    entityType: text('entity_type'),
+    entityId: text('entity_id'),
+    reason: text('reason'),
+    before: jsonb('before'),
+    after: jsonb('after'),
+    outcome: text('outcome', { enum: ['ok', 'denied', 'error'] }).notNull(),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('admin_audit_created_idx').on(t.createdAt), index('admin_audit_admin_idx').on(t.adminId, t.createdAt)],
 );

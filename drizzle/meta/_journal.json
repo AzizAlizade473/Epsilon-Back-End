@@ -43,6 +43,13 @@
       "when": 1795514108245,
       "tag": "0005_peaceful_amazoness",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795518880760,
+      "tag": "0006_tense_johnny_storm",
+      "breakpoints": true
     }
   ]
 }
