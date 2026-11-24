@@ -78,7 +78,7 @@ export function TextField({ label, value, onChange }: { label: string; value: st
 export function KpiMap({ data }: { data: Record<string, number | null> }) {
   const { t } = useTranslation();
   return (
-    <div className="grid-4">
+    <div className="kpis">
       {Object.entries(data).map(([k, v]) => (
         <Kpi key={k} label={t(`metricNames.${k}`, { defaultValue: k })} metric={k} value={fmtMetric(k, v)} />
       ))}

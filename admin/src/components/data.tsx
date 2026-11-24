@@ -11,7 +11,7 @@ export function PageSkeleton({ screen }: { screen?: boolean }) {
   const { t } = useTranslation();
   return (
     <div className={screen ? 'screen' : 'skel-page'} role="status" aria-busy="true" aria-label={t('common.loading')}>
-      <div className="grid-4">
+      <div className="kpis">
         {[0, 1, 2, 3].map((i) => (
           <div key={i} className="kpi">
             <Skeleton h={14} w="60%" />
@@ -36,7 +36,7 @@ export function StatusPanel({ error, onRetry, bootstrap }: { error: unknown; onR
   else if (e?.status === 404) key = bootstrap ? 'disabled' : 'notFound';
   else if (e?.kind === 'network') key = 'network';
   return (
-    <div className="status" role="alert">
+    <div className="state" role="alert">
       <Contour />
       <h2>{t(`status.${key}.title`)}</h2>
       <p className="muted">{t(`status.${key}.body`)}</p>

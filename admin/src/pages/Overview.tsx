@@ -3,7 +3,7 @@ import { useData } from '../api/hooks';
 import { overviewSchema } from '../api/schemas';
 import { TimeChart } from '../components/charts';
 import { Boundary, DataTable } from '../components/data';
-import { Delta, Distribution, Kpi, Panel, RestaurantCell, Stars, Empty } from '../components/ui';
+import { Delta, Distribution, Kpi, Panel, RestaurantCell, Stars, Empty, RatingCell } from '../components/ui';
 import { fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtRate, fmtRating } from '../lib/format';
 
 export function Component() {
@@ -22,13 +22,13 @@ export function Component() {
         const growth = days.map((x) => ({ date: x.date, newUsers: x.newUsers, activeUsers: x.activeUsers, total: (run += x.newUsers) }));
         return (
           <div className="stack">
-            <div className="grid-4">
+            <div className="kpis kpis-hero">
               <Kpi hero label={t('metricNames.totalUsers')} metric="totalUsers" value={fmtNum(k.totalUsers)} notTracked={nt('totalUsers')} delta={<Delta cur={k.totalUsers} prev={p?.totalUsers} />} />
               <Kpi hero label={t('metricNames.ratings')} metric="ratings" value={fmtNum(k.ratings)} notTracked={nt('ratings')} delta={<Delta cur={k.ratings} prev={p?.ratings} />} />
               <Kpi hero label={t('metricNames.avgRating')} metric="avgRating" value={<span className="kpi-rating">{fmtRating(k.avgRating)} <Stars value={k.avgRating} size={16} /></span>} notTracked={nt('avgRating')} delta={<Delta abs cur={k.avgRating} prev={p?.avgRating} />} />
               <Kpi hero label={t('metricNames.receiptsImported')} metric="receiptsImported" value={fmtNum(k.receiptsImported)} notTracked={nt('receiptsImported')} delta={<Delta cur={k.receiptsImported} prev={p?.receiptsImported} />} />
             </div>
-            <div className="grid-4 secondary">
+            <div className="kpis">
               <Kpi label={t('metricNames.newUsers')} metric="newUsers" value={fmtNum(k.newUsers)} notTracked={nt('newUsers')} delta={<Delta cur={k.newUsers} prev={p?.newUsers} />} />
               <Kpi label={t('overview.activeUsers')} metric="activeUser" value={`${fmtNum(k.dau)} / ${fmtNum(k.wau)} / ${fmtNum(k.mau)}`} notTracked={nt('dau')} />
               <Kpi label={t('metricNames.uniqueRestaurants')} metric="uniqueRestaurants" value={fmtNum(k.uniqueRestaurants)} notTracked={nt('uniqueRestaurants')} delta={<Delta cur={k.uniqueRestaurants} prev={p?.uniqueRestaurants} />} />
@@ -70,10 +70,10 @@ export function Component() {
               <Panel title={t('overview.recent')}>
                 {d.activity.length ? (
                   <ol className="activity">
-                    {d.activity.map((a, i) => (
+                    {d.activity.slice(0, 5).map((a, i) => (
                       <li key={i}>
                         <span className="activity-text">{a.text}</span>
-                        <span className="muted num">
+                        <span className="activity-meta muted num">
                           {t(`activity.${a.type}`, { defaultValue: a.type })} · {fmtDateTime(a.at)}
                         </span>
                       </li>
@@ -94,7 +94,7 @@ export function Component() {
                   { id: 'name', header: t('nav.restaurants'), cell: (r) => <RestaurantCell name={r.name} logoBrand={r.logoBrand} /> },
                   { id: 'receipts', header: t('common.receipts'), num: true, cell: (r) => fmtNum(r.receipts) },
                   { id: 'ratings', header: t('common.ratings'), num: true, cell: (r) => fmtNum(r.ratings) },
-                  { id: 'avg', header: t('common.avgRating'), num: true, cell: (r) => <span className="stars-cell"><Stars value={r.avgRating} /> {fmtRating(r.avgRating)}</span> },
+                  { id: 'avg', header: t('common.avgRating'), num: true, cell: (r) => <RatingCell value={r.avgRating} /> },
                 ]}
               />
             </Panel>

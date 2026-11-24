@@ -11,10 +11,11 @@ import { fmtNum } from '../lib/format';
 /** Counts-by-name map or array, normalised to [label, count] rows. */
 const pairs = (v: unknown): [string, number][] =>
   Array.isArray(v)
-    ? v.map((x: { name?: string; key?: string; provider?: string; engine?: string; count: number }) => [x.name ?? x.key ?? x.provider ?? x.engine ?? '—', x.count])
+    ? v.map((x: { name?: string; key?: string; provider?: string; engine?: string; count?: number; receipts?: number }) => [x.name ?? x.key ?? x.provider ?? x.engine ?? '—', x.count ?? x.receipts ?? 0])
     : Object.entries((v ?? {}) as Record<string, number>);
 
-function CountList({ title, data }: { title: string; data: unknown }) {
+function CountList({ title, data, ns }: { title: string; data: unknown; ns: 'provider' | 'engine' }) {
+  const { t } = useTranslation();
   const rows = pairs(data);
   return (
     <div className="kpi">
@@ -22,7 +23,7 @@ function CountList({ title, data }: { title: string; data: unknown }) {
       <ul className="counts">
         {rows.map(([k, n]) => (
           <li key={k}>
-            <span>{k}</span>
+            <span>{t(`${ns}.${k}`, { defaultValue: k })}</span>
             <span className="num">{fmtNum(n)}</span>
           </li>
         ))}
@@ -35,10 +36,11 @@ function Health() {
   const { t } = useTranslation();
   const q = useData('/receipts/health', receiptHealthSchema, {}, { range: true });
   return (
-    <Panel title={t('receipts.health')}>
+    <section className="section">
+      <h2 className="section-title">{t('receipts.health')}</h2>
       <Boundary q={q}>
         {(h) => (
-          <div className="grid-4">
+          <div className="kpis">
             <Kpi label={t('receipts.imported')} metric="receiptsImported" value={fmtNum(h.imported)} />
             <Kpi label={t('receipts.unsupported')} value={fmtNum(h.unsupported)} notTracked={h.tracking?.unsupported === 'not_tracked'} />
             <Kpi label={t('receipts.unknownMerchant')} value={fmtNum(h.unknownMerchant)} notTracked={h.tracking?.unknownMerchant === 'not_tracked'} />
@@ -46,12 +48,12 @@ function Health() {
               <div className="kpi-label">{t('receipts.failures')}</div>
               <div className="kpi-value">{h.failures === 'not_tracked' || h.failures == null ? <NotTracked /> : <span className="num">{JSON.stringify(h.failures)}</span>}</div>
             </div>
-            <CountList title={t('receipts.byProvider')} data={h.byProvider} />
-            <CountList title={t('receipts.byEngine')} data={h.byEngine} />
+            <CountList title={t('receipts.byProvider')} data={h.byProvider} ns="provider" />
+            <CountList title={t('receipts.byEngine')} data={h.byEngine} ns="engine" />
           </div>
         )}
       </Boundary>
-    </Panel>
+    </section>
   );
 }
 

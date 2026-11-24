@@ -38,7 +38,19 @@ export function Component() {
           <dt>{t('settings.role')}</dt>
           <dd>{t(`role.${admin.role}`, { defaultValue: admin.role })}</dd>
           <dt>{t('settings.permissions')}</dt>
-          <dd className="mono">{admin.permissions.join(', ') || '—'}</dd>
+          <dd>
+            {admin.permissions.length ? (
+              <ul className="chips">
+                {admin.permissions.map((p) => (
+                  <li key={p} className="chip mono">
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              '—'
+            )}
+          </dd>
         </dl>
         <p className="muted">{t('settings.sessionNote')}</p>
         <button type="button" className="btn" onClick={() => void signOut()}>

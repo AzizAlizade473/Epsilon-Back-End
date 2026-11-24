@@ -11,7 +11,7 @@ export function Component() {
   return (
     <Boundary q={q}>
       {(h) => (
-        <div className="grid-4">
+        <div className="kpis">
           <Kpi label={t('health.api')} value={<Badge tone="good">{t('health.up')}</Badge>} sub={`v${h.api.version} · ${t('health.uptime')} ${fmtDuration(h.api.uptimeS)}`} />
           <Kpi label={t('health.db')} value={<Badge tone={h.db.ok ? 'good' : 'bad'}>{h.db.ok ? t('health.ok') : t('health.down')}</Badge>} sub={h.db.latencyMs == null ? undefined : `${fmtNum(h.db.latencyMs)} ms`} />
           <Kpi label={t('health.mealReminders')} value={fmtDateTime(h.jobs.mealReminders.lastRunAt)} sub={t('health.lastRun')} />

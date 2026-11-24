@@ -6,7 +6,7 @@ import { Boundary, DataTable, Pager } from '../components/data';
 import { SelectField, Toolbar } from '../components/page';
 import { NotificationsTable } from '../components/tables';
 import { Kpi, NotTracked, Panel } from '../components/ui';
-import { fmtNum } from '../lib/format';
+import { fmtNum, fmtRate } from '../lib/format';
 
 const KINDS = ['reminder', 'cashback', 'partner'];
 
@@ -20,10 +20,10 @@ export function Component() {
       <Boundary q={stats}>
         {(s) => (
           <>
-            <div className="grid-4">
+            <div className="kpis">
               <Kpi label={t('notifications.sent')} metric="notifSent" value={fmtNum(s.sent)} />
               <Kpi label={t('notifications.readCount')} metric="notifRead" value={fmtNum(s.read)} sub={s.sent ? `${((s.read / s.sent) * 100).toFixed(1)}%` : undefined} />
-              <Kpi label={t('notifications.devices')} metric="pushDevices" value={fmtNum(s.devices)} />
+              <Kpi label={t('notifications.devices')} metric="pushDevices" value={fmtNum(s.devices.tokens)} sub={t('notifications.deviceUsers', { count: s.devices.users ?? 0 })} />
               <div className="kpi">
                 <div className="kpi-label">{t('notifications.delivery')}</div>
                 <div className="kpi-value">{s.delivery === 'not_tracked' || s.delivery == null ? <NotTracked /> : '—'}</div>
@@ -33,11 +33,11 @@ export function Component() {
               <Panel title={t('notifications.optIns')} metric="optIn">
                 <dl className="kv">
                   <dt>{t('users.reminders')}</dt>
-                  <dd className="num">{fmtNum(s.optIn.reminders)}</dd>
+                  <dd className="num">{fmtRate(s.optIn.reminders)}</dd>
                   <dt>{t('users.cashbackUpdates')}</dt>
-                  <dd className="num">{fmtNum(s.optIn.cashbackUpdates)}</dd>
+                  <dd className="num">{fmtRate(s.optIn.cashbackUpdates)}</dd>
                   <dt>{t('users.partnerUpdates')}</dt>
-                  <dd className="num">{fmtNum(s.optIn.partnerUpdates)}</dd>
+                  <dd className="num">{fmtRate(s.optIn.partnerUpdates)}</dd>
                 </dl>
               </Panel>
               <Panel title={t('notifications.byKind')}>

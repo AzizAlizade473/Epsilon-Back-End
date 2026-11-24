@@ -8,7 +8,7 @@ import { KpiMap, PageHead } from '../components/page';
 import { ReviewFeed } from '../components/reviews';
 import { DishesTable } from '../components/tables';
 import { categoryLabel } from '../lib/format';
-import { Badge, Dimensions, Distribution, Empty, Panel, RestaurantCell } from '../components/ui';
+import { Badge, Dimensions, Distribution, Empty, Panel, RestaurantLogo } from '../components/ui';
 
 export function Component() {
   const { t } = useTranslation();
@@ -22,14 +22,14 @@ export function Component() {
           <div className="stack">
             <PageHead
               back={{ to: '/restaurants', label: t('nav.restaurants') }}
-              lead={<RestaurantCell name={r.name} branch={r.branch} partner={r.isPartner} logoBrand={null} />}
-              sub={
-                <>
-                  {[r.category && categoryLabel(r.category), r.chain].filter(Boolean).join(' · ')} {!r.isPartner && <Badge>{t('restaurants.nonPartner')}</Badge>}
-                  <br />
-                  {t('restaurants.observed')}
-                </>
+              lead={<RestaurantLogo name={r.name} size="lg" />}
+              title={
+                <span className="title-row">
+                  {r.name}
+                  <Badge tone={r.isPartner ? 'brand' : 'muted'}>{r.isPartner ? t('common.partner') : t('restaurants.nonPartner')}</Badge>
+                </span>
               }
+              sub={[r.category && categoryLabel(r.category), ...[r.chain, r.branch].filter((x) => x && x !== r.name), t('restaurants.observed')].filter((x, i, a) => x && a.indexOf(x) === i).join(' · ')}
             />
             <KpiMap data={d.kpis} />
             <div className="grid-3">

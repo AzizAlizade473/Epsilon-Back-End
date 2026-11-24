@@ -9,7 +9,7 @@
     "page": "Səhifə {{n}}", "pagination": "Səhifələmə", "partner": "Tərəfdaş",
     "ratingDistribution": "Qiymətlərin bölgüsü", "ratings": "Qiymətlər", "reason": "Səbəb (məcburi)",
     "receipts": "Qəbzlər", "retry": "Yenidən cəhd et", "sampleData": "Nümunə məlumat", "skip": "Məzmuna keç",
-    "starsOf": "5 ulduzdan {{value}}", "status": "Status", "title": "Başlıq", "total": "cəmi", "type": "Növ",
+    "starsOf": "5 ulduzdan {{value}}", "ratingsCount_one": "{{count}} qiymət", "ratingsCount_other": "{{count}} qiymət", "status": "Status", "title": "Başlıq", "total": "cəmi", "type": "Növ",
     "updated": "Yenilənib", "viewChart": "Qrafikə bax", "viewTable": "Cədvəl kimi göstər", "vsPrevious": "əvvəlki dövrlə müqayisədə",
     "up": "Artım", "down": "Azalma", "flat": "Dəyişməyib"
   },
@@ -42,11 +42,11 @@
     "activeUsers": "Aktiv istifadəçilər (DAU / WAU / MAU)", "active": "Aktiv istifadəçilər", "cumulative": "Ümumi istifadəçilər (sağ ox)",
     "userGrowth": "İstifadəçi artımı", "activity": "Gündəlik qəbz və qiymətlər", "recent": "Son fəaliyyət", "topRestaurants": "Ən çox görünən restoranlar (Epsilon vasitəsilə)"
   },
-  "activity": { "receipt": "Qəbz", "rating": "Qiymət", "signup": "Qeydiyyat", "cashback": "Keşbek" },
+  "activity": { "review": "Rəy", "user": "Qeydiyyat", "receipt": "Qəbz", "rating": "Qiymət", "signup": "Qeydiyyat", "cashback": "Keşbek" },
   "users": {
     "search": "İstifadəçi axtar", "user": "İstifadəçi", "unnamed": "Adsız istifadəçi", "contact": "Əlaqə (maskalanmış)", "joined": "Qoşulub",
     "lastActive": "Son aktivlik", "notifications": "Bildirişlər", "reminders": "Xatırlatmalar", "cashbackUpdates": "Keşbek yenilikləri",
-    "partnerUpdates": "Tərəfdaş yenilikləri", "devices": "{{n}} cihaz", "reveal": "Əlaqəni göstər", "hideContact": "Gizlət",
+    "partnerUpdates": "Tərəfdaş yenilikləri", "devices_one": "{{count}} cihaz", "devices_other": "{{count}} cihaz", "noTopics": "Hamısı söndürülüb", "reveal": "Əlaqəni göstər", "hideContact": "Gizlət",
     "revealTitle": "Əlaqə məlumatını göstər", "revealBody": "Tam e-poçt və telefon bir dəfə göstərilir və bu əməliyyat səbəbinizlə birlikdə audit jurnalına yazılır.",
     "preferences": "Bildiriş seçimləri", "pref": { "reminders": "Xatırlatmalar", "cashbackUpdates": "Keşbek yenilikləri", "partnerUpdates": "Tərəfdaş yenilikləri" }
   },
@@ -63,7 +63,7 @@
     "sortBest": "Ən yüksək qiymət", "sortWorst": "Ən aşağı qiymət", "sortReviewed": "Ən çox rəy", "sortObserved": "Ən çox müşahidə", "minRatings": "Min. qiymət sayı"
   },
   "dimension": { "food": "Yemək", "service": "Xidmət", "speed": "Sürət", "price": "Qiymət", "ambience": "Mühit" },
-  "quick": { "tasty": "Dadlı", "fresh": "Təzə", "friendly": "Mehriban personal", "slow": "Yavaş", "cold": "Soyuq verildi", "pricey": "Bahalı" },
+  "quick": {"tasty": "Dadlı", "fresh": "Təzə", "friendly": "Mehriban personal", "slow": "Yavaş", "cold": "Soyuq verildi", "pricey": "Bahalı", "poor_taste": "Dadı pis idi", "not_fresh": "Təzə deyildi", "served_cold": "Soyuq gəldi", "poor_preparation": "Pis hazırlanmışdı", "disappointing_portion": "Porsiya məyus etdi", "not_worth_price": "Qiymətinə dəyməzdi", "needed_more_flavor": "Daha dadlı ola bilərdi", "temperature_could_improve": "Temperaturu daha yaxşı ola bilərdi", "portion_too_small": "Porsiya çox kiçik idi", "texture_not_right": "Teksturası yaxşı deyildi", "presentation_could_improve": "Təqdimatı daha yaxşı ola bilərdi", "too_expensive_for_quality": "Keyfiyyətinə görə bahadır", "average_taste": "Dadı orta idi", "acceptable_portion": "Porsiya normal idi", "fair_price": "Qiyməti münasib idi", "nothing_special": "Xüsusi bir şey yox idi", "could_be_fresher": "Daha təzə ola bilərdi", "room_for_improvement": "Yaxşılaşdırmaq olar", "great_taste": "Dadı çox yaxşı idi", "fresh_ingredients": "Təzə inqrediyentlər", "good_portion": "Porsiya yaxşı idi", "nicely_prepared": "Yaxşı hazırlanmışdı", "good_presentation": "Təqdimatı gözəl idi", "good_value": "Qiymətinə dəyərdi", "amazing_taste": "Dadı möhtəşəm idi", "exceptionally_fresh": "Çox təzə idi", "perfectly_prepared": "Mükəmməl hazırlanmışdı", "perfect_portion": "Porsiya tam yerində idi", "beautiful_presentation": "Təqdimatı çox gözəl idi", "would_order_again": "Yenə sifariş edərdim"},
   "reviews": {
     "stars": "Ulduz", "hasComment": "Şərh var", "edited": "Redaktə edilib", "moderated": "Moderasiya", "dimension": "Ölçü", "sentiment": "Tonallıq",
     "comment": "Rəy", "hidden": "Gizlədilib", "none": "Rəy yoxdur", "detail": "Rəyin təfsilatı", "hide": "Rəyi gizlət", "unhide": "Rəyi göstər",
@@ -81,12 +81,12 @@
     "byDay": "Gündəlik keşbek", "byRestaurant": "Restoran üzrə", "ledger": "Mühasibat kitabı"
   },
   "ledger": { "confirmed": "Təsdiqlənib", "pending": "Gözləmədə", "reversed": "Geri qaytarılıb", "expired": "Vaxtı keçib", "earned": "Qazanılıb", "spent": "Xərclənib" },
-  "notifications": {
+  "notifications": { "deviceUsers_one": "{{count}} hesabda", "deviceUsers_other": "{{count}} hesabda", 
     "sent": "Göndərilib", "readCount": "Oxunub", "read": "Oxunub", "unread": "Oxunmayıb", "devices": "Push cihazları", "delivery": "Çatdırılma",
     "optIns": "Kateqoriya üzrə razılıqlar", "byKind": "Növə görə", "history": "Tarixçə"
   },
   "kind": { "reminder": "Xatırlatma", "cashback": "Keşbek", "partner": "Tərəfdaş" },
-  "product": {
+  "product": { "cohort": { "week": "Qeydiyyat həftəsi", "size": "İstifadəçi", "returned": "Qayıdan" },
     "registrations": "Qeydiyyatlar", "active": "Aktiv istifadəçilər", "cohorts": "Kohortlar", "funnels": "Hunilər", "retention": "Saxlanma",
     "eventsNotStarted": "Hələ izlənmir — hadisələrin toplanmasına başlanmayıb."
   },
@@ -112,13 +112,16 @@
     "lang": { "en": "English", "az": "Azərbaycan dili" }, "session": "Sessiya", "name": "Ad", "email": "E-poçt", "role": "Rol", "permissions": "İcazələr",
     "sessionNote": "Sessiya 30 dəqiqə hərəkətsizlikdən və ya cəmi 8 saatdan sonra başa çatır. Giriş giriş qapısı tərəfindən idarə olunur."
   },
+  "provider": { "customer_official_image": "Rəsmi e-kassa qəbzi", "customer_supplied_official_image": "Rəsmi qəbz şəkli", "customer_paper_photo": "Kağız qəbz şəkli", "customer_corrected": "Müştəri düzəltdi", "partner_pos": "Tərəfdaş POS", "fixture": "Test məlumatı" },
+  "engine": { "structured": "Strukturlaşdırılmış məlumat", "on_device_ocr": "Cihazda OCR", "gemini": "Gemini" },
   "metricNames": {
+    "observedPurchaseValueMinor": "Müşahidə olunan alış dəyəri",
     "totalUsers": "Ümumi istifadəçilər", "newUsers": "Yeni istifadəçilər", "activeUser": "Aktiv istifadəçilər", "receiptsImported": "İdxal olunmuş qəbzlər", "uniqueRestaurants": "Unikal restoranlar",
     "ratings": "Qiymətlər", "avgRating": "Orta qiymət", "cashbackConfirmedMinor": "Təsdiqlənmiş keşbek", "receiptToRatingRate": "Qəbzdən qiymətə keçid",
     "returningUserPct": "Qayıdan istifadəçilər", "avgRatingsPerReceipt": "Qəbz başına qiymət", "activePartners": "Aktiv tərəfdaşlar",
     "receipts": "Qəbzlər", "reviewers": "Rəy verənlər", "purchases": "Müşahidə olunan alışlar", "positivePct": "Müsbət", "negativePct": "Mənfi",
     "observedValueMinor": "Müşahidə olunan alış dəyəri", "avgReceiptsPerUser": "İstifadəçi başına qəbz", "avgRatingsPerUser": "İstifadəçi başına qiymət",
-    "neverScanned": "Heç vaxt qəbz skan etməyib", "scannedNeverRated": "Skan edib, qiymətləndirməyib", "ratedNonPartner": "Tərəfdaş olmayanlara qiymət", "notificationOptInRate": "Bildirişə razılıq nisbəti"
+    "neverScanned": "Heç vaxt qəbz skan etməyib", "scannedNeverRated": "Skan edib, qiymətləndirməyib", "ratedNonPartner": "Tərəfdaş olmayanlara qiymət", "notificationOptInRate": "Xatırlatmalara razılıq"
   },
   "metrics": {
     "totalUsers": "Silinməmiş istifadəçi qeydləri.",
@@ -132,6 +135,7 @@
     "returningUserPct": "Aralıqda ən azı iki fərqli aktiv günü olan istifadəçilər bölünsün aktiv istifadəçilərə.",
     "avgRatingsPerReceipt": "Qiymətlər bölünsün idxal olunmuş qəbzlərə.",
     "activePartners": "Aralıqda fəaliyyəti olan tərəfdaş restoranlar.",
+    "observedPurchaseValueMinor": "Epsilon vasitəsilə görünən qəbz məbləğlərinin cəmi. Bu gəlir deyil.",
     "cashbackConfirmedMinor": "Növü qazanılmış, statusu təsdiqlənmiş kitab qeydləri. Demo və test məlumatı daxil deyil.",
     "cashbackConfirmed": "Növü qazanılmış, statusu təsdiqlənmiş kitab qeydləri. Demo və test məlumatı daxil deyil.",
     "cashbackPending": "Hələ təsdiqlənməmiş qazanılmış keşbek.",
@@ -152,7 +156,7 @@
     "neverScanned": "İdxal olunmuş qəbzi olmayan istifadəçilər.",
     "scannedNeverRated": "Ən azı bir qəbzi və heç bir qiyməti olmayan istifadəçilər.",
     "ratedNonPartner": "Epsilon tərəfdaşı olmayan mağazalara verilmiş qiymətlər.",
-    "notificationOptInRate": "Ən azı bir bildiriş kateqoriyası açıq olan istifadəçilər.",
+    "notificationOptInRate": "Hər bildiriş növünü açıq saxlayan istifadəçilərin payı. Əsas rəqəm xatırlatmalardır.",
     "notifSent": "Aralıqda yaradılmış bildirişlər.",
     "notifRead": "İstifadəçi tərəfindən açılmış bildirişlər.",
     "pushDevices": "Qeydiyyatdan keçmiş push cihazları. Çatdırılma hələ izlənmir.",

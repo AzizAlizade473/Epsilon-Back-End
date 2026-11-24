@@ -32,6 +32,8 @@
   --warn: #9a4a06;
   --warn-bg: #fff3e0;
   --tip-bg: #1b1c3a;
+  --selection: #d6dcf3;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235c5e78' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   /* Sequential blues: colour encodes data only. */
   --c1: #282973;
@@ -72,6 +74,8 @@
   --warn: #f2b35e;
   --warn-bg: #33250f;
   --tip-bg: #2c2f5c;
+  --selection: #2f3470;
+  --chev: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a5a8c6' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   --c1: #b8caff;
   --c2: #7fa6f0;

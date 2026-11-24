@@ -38,7 +38,7 @@ export function TimeChart({ title, metric, data, series, kind, stacked, height =
     <>
       <CartesianGrid stroke="var(--hairline)" vertical={false} />
       <XAxis dataKey="date" tickFormatter={fmtDay} minTickGap={24} {...axisProps} />
-      <YAxis yAxisId="l" tickFormatter={(v: number) => fmtCompact(v)} width={44} {...axisProps} />
+      <YAxis yAxisId="l" allowDecimals={false} tickFormatter={(v: number) => fmtCompact(v)} width={44} {...axisProps} />
       {hasRight && <YAxis yAxisId="r" orientation="right" tickFormatter={(v: number) => fmtCompact(v)} width={44} {...axisProps} />}
       <Tooltip contentStyle={tooltipStyle} labelFormatter={(l) => fmtDay(String(l))} formatter={(v) => valueFormat(Number(v))} cursor={{ stroke: 'var(--hairline)' }} />
     </>

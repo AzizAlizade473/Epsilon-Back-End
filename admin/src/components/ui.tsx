@@ -135,7 +135,26 @@ export function Stars({ value, size = 14 }: { value: number | null | undefined; 
   );
 }
 
+/** Stars plus the number; a single dash when nothing is rated yet. */
+export const RatingCell = ({ value }: { value: number | null | undefined }) =>
+  value == null ? (
+    <span className="muted">—</span>
+  ) : (
+    <span className="stars-cell">
+      <Stars value={value} /> {value.toFixed(2)}
+    </span>
+  );
+
 /** Restaurant logo when the chain is recognised, neutral mark otherwise. */
+export function RestaurantLogo({ name, logoBrand, size }: { name: string; logoBrand?: string | null; size?: 'lg' }) {
+  const logo = logoFor(name, logoBrand);
+  return (
+    <span className={size ? `rlogo rlogo-${size}` : 'rlogo'}>
+      {logo ? <img src={logo} alt="" loading="lazy" /> : <Store size={size ? 22 : 16} aria-hidden="true" />}
+    </span>
+  );
+}
+
 export function RestaurantCell({ name, branch, logoBrand, partner, sub }: {
   name: string;
   branch?: string | null;
@@ -144,12 +163,9 @@ export function RestaurantCell({ name, branch, logoBrand, partner, sub }: {
   sub?: ReactNode;
 }) {
   const { t } = useTranslation();
-  const logo = logoFor(name, logoBrand);
   return (
     <span className="rcell">
-      <span className="rlogo">
-        {logo ? <img src={logo} alt="" loading="lazy" /> : <Store size={16} aria-hidden="true" />}
-      </span>
+      <RestaurantLogo name={name} logoBrand={logoBrand} />
       <span className="rtext">
         <span className="rname">
           {name}
@@ -166,13 +182,23 @@ export function Distribution({ counts }: { counts: number[] }) {
   const { t } = useTranslation();
   const total = counts.reduce((a, b) => a + b, 0);
   const max = Math.max(1, ...counts);
+  const avg = total ? counts.reduce((a, n, i) => a + n * (i + 1), 0) / total : null;
   return (
+    <div className="dist-wrap">
+      <p className="dist-summary">
+        <span className="dist-avg num">{avg == null ? '—' : avg.toFixed(2)}</span>
+        <Stars value={avg} size={16} />
+        <span className="muted num">{t('common.ratingsCount', { count: total })}</span>
+      </p>
     <ul className="dist" aria-label={t('common.ratingDistribution')}>
       {[5, 4, 3, 2, 1].map((s) => {
         const n = counts[s - 1] ?? 0;
         return (
           <li key={s}>
-            <span className="dist-star num">{s}★</span>
+            <span className="dist-star num">
+              {s}
+              <Star size={11} fill="currentColor" strokeWidth={0} aria-hidden="true" />
+            </span>
             <span className="dist-track">
               <span className="dist-bar" style={{ width: `${(n / max) * 100}%` }} />
             </span>
@@ -183,6 +209,7 @@ export function Distribution({ counts }: { counts: number[] }) {
         );
       })}
     </ul>
+    </div>
   );
 }
 
@@ -211,9 +238,9 @@ export function Dimensions({ data }: { data: Record<string, { positive: number; 
         );
       })}
       <li className="dims-legend">
-        <span className="pos">■ {t('common.positive')}</span>
-        <span className="muted">■ {t('common.neutral')}</span>
-        <span className="neg">■ {t('common.negative')}</span>
+        <span><span className="swatch seg-pos" aria-hidden="true" /> {t('common.positive')}</span>
+        <span><span className="swatch seg-neu" aria-hidden="true" /> {t('common.neutral')}</span>
+        <span><span className="swatch seg-neg" aria-hidden="true" /> {t('common.negative')}</span>
       </li>
     </ul>
   );

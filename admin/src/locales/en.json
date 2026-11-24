@@ -9,7 +9,7 @@
     "page": "Page {{n}}", "pagination": "Pagination", "partner": "Partner",
     "ratingDistribution": "Rating distribution", "ratings": "Ratings", "reason": "Reason (required)",
     "receipts": "Receipts", "retry": "Try again", "sampleData": "Sample data", "skip": "Skip to content",
-    "starsOf": "{{value}} out of 5 stars", "status": "Status", "title": "Title", "total": "total", "type": "Type",
+    "starsOf": "{{value}} out of 5 stars", "ratingsCount_one": "{{count}} rating", "ratingsCount_other": "{{count}} ratings", "status": "Status", "title": "Title", "total": "total", "type": "Type",
     "updated": "Updated", "viewChart": "View chart", "viewTable": "View as table", "vsPrevious": "versus previous period",
     "up": "Up", "down": "Down", "flat": "Unchanged"
   },
@@ -42,11 +42,11 @@
     "activeUsers": "Active users (DAU / WAU / MAU)", "active": "Active users", "cumulative": "Total users (right axis)",
     "userGrowth": "User growth", "activity": "Receipts and ratings per day", "recent": "Recent activity", "topRestaurants": "Top restaurants (observed through Epsilon)"
   },
-  "activity": { "receipt": "Receipt", "rating": "Rating", "signup": "Sign-up", "cashback": "Cashback" },
+  "activity": { "review": "Review", "user": "Sign-up", "receipt": "Receipt", "rating": "Rating", "signup": "Sign-up", "cashback": "Cashback" },
   "users": {
     "search": "Search users", "user": "User", "unnamed": "Unnamed user", "contact": "Contact (masked)", "joined": "Joined",
     "lastActive": "Last active", "notifications": "Notifications", "reminders": "Reminders", "cashbackUpdates": "Cashback updates",
-    "partnerUpdates": "Partner updates", "devices": "{{n}} devices", "reveal": "Reveal contact", "hideContact": "Hide",
+    "partnerUpdates": "Partner updates", "devices_one": "{{count}} device", "devices_other": "{{count}} devices", "noTopics": "All off", "reveal": "Reveal contact", "hideContact": "Hide",
     "revealTitle": "Reveal contact details", "revealBody": "Full email and phone are shown once and this action is recorded in the audit log with your reason.",
     "preferences": "Notification preferences", "pref": { "reminders": "Reminders", "cashbackUpdates": "Cashback updates", "partnerUpdates": "Partner updates" }
   },
@@ -63,7 +63,7 @@
     "sortBest": "Best rated", "sortWorst": "Worst rated", "sortReviewed": "Most reviewed", "sortObserved": "Most observed", "minRatings": "Min. ratings"
   },
   "dimension": { "food": "Food", "service": "Service", "speed": "Speed", "price": "Price", "ambience": "Ambience" },
-  "quick": { "tasty": "Tasty", "fresh": "Fresh", "friendly": "Friendly staff", "slow": "Slow", "cold": "Served cold", "pricey": "Pricey" },
+  "quick": {"tasty": "Tasty", "fresh": "Fresh", "friendly": "Friendly staff", "slow": "Slow", "cold": "Served cold", "pricey": "Pricey", "poor_taste": "Poor taste", "not_fresh": "Not fresh", "served_cold": "Served cold", "poor_preparation": "Poorly prepared", "disappointing_portion": "Disappointing portion", "not_worth_price": "Not worth the price", "needed_more_flavor": "Needed more flavour", "temperature_could_improve": "Temperature could be better", "portion_too_small": "Portion was too small", "texture_not_right": "Texture wasn't right", "presentation_could_improve": "Presentation could be better", "too_expensive_for_quality": "Too expensive for the quality", "average_taste": "Average taste", "acceptable_portion": "Acceptable portion", "fair_price": "Fair price", "nothing_special": "Nothing special", "could_be_fresher": "Could be fresher", "room_for_improvement": "Room for improvement", "great_taste": "Great taste", "fresh_ingredients": "Fresh ingredients", "good_portion": "Good portion", "nicely_prepared": "Nicely prepared", "good_presentation": "Good presentation", "good_value": "Good value", "amazing_taste": "Amazing taste", "exceptionally_fresh": "Exceptionally fresh", "perfectly_prepared": "Perfectly prepared", "perfect_portion": "Perfect portion", "beautiful_presentation": "Beautiful presentation", "would_order_again": "Would order again"},
   "reviews": {
     "stars": "Stars", "hasComment": "Has comment", "edited": "Edited", "moderated": "Moderated", "dimension": "Dimension", "sentiment": "Sentiment",
     "comment": "Feedback", "hidden": "Hidden", "none": "No reviews", "detail": "Review details", "hide": "Hide review", "unhide": "Unhide review",
@@ -81,12 +81,12 @@
     "byDay": "Cashback per day", "byRestaurant": "By restaurant", "ledger": "Ledger"
   },
   "ledger": { "confirmed": "Confirmed", "pending": "Pending", "reversed": "Reversed", "expired": "Expired", "earned": "Earned", "spent": "Spent" },
-  "notifications": {
+  "notifications": { "deviceUsers_one": "on {{count}} account", "deviceUsers_other": "on {{count}} accounts", 
     "sent": "Sent", "readCount": "Read", "read": "Read", "unread": "Unread", "devices": "Push devices", "delivery": "Delivery",
     "optIns": "Opt-ins by category", "byKind": "By kind", "history": "History"
   },
   "kind": { "reminder": "Reminder", "cashback": "Cashback", "partner": "Partner" },
-  "product": {
+  "product": { "cohort": { "week": "Sign-up week", "size": "Users", "returned": "Returned" },
     "registrations": "Registrations", "active": "Active users", "cohorts": "Cohorts", "funnels": "Funnels", "retention": "Retention",
     "eventsNotStarted": "Not tracked yet — event collection not started."
   },
@@ -112,13 +112,16 @@
     "lang": { "en": "English", "az": "Azərbaycan dili" }, "session": "Session", "name": "Name", "email": "Email", "role": "Role", "permissions": "Permissions",
     "sessionNote": "Sessions end after 30 minutes of inactivity or 8 hours in total. Sign-in is handled by the access gateway."
   },
+  "provider": { "customer_official_image": "Official e-kassa receipt", "customer_supplied_official_image": "Official receipt image", "customer_paper_photo": "Paper receipt photo", "customer_corrected": "Corrected by customer", "partner_pos": "Partner POS", "fixture": "Test data" },
+  "engine": { "structured": "Structured data", "on_device_ocr": "On-device OCR", "gemini": "Gemini" },
   "metricNames": {
+    "observedPurchaseValueMinor": "Observed purchase value",
     "totalUsers": "Total users", "newUsers": "New users", "activeUser": "Active users", "receiptsImported": "Receipts imported", "uniqueRestaurants": "Unique restaurants",
     "ratings": "Ratings", "avgRating": "Avg rating", "cashbackConfirmedMinor": "Cashback confirmed", "receiptToRatingRate": "Receipt to rating rate",
     "returningUserPct": "Returning users", "avgRatingsPerReceipt": "Ratings per receipt", "activePartners": "Active partners",
     "receipts": "Receipts", "reviewers": "Reviewers", "purchases": "Observed purchases", "positivePct": "Positive", "negativePct": "Negative",
     "observedValueMinor": "Observed purchase value", "avgReceiptsPerUser": "Receipts per user", "avgRatingsPerUser": "Ratings per user",
-    "neverScanned": "Never scanned a receipt", "scannedNeverRated": "Scanned, never rated", "ratedNonPartner": "Rated at non-partners", "notificationOptInRate": "Notification opt-in rate"
+    "neverScanned": "Never scanned a receipt", "scannedNeverRated": "Scanned, never rated", "ratedNonPartner": "Rated at non-partners", "notificationOptInRate": "Reminders opt-in"
   },
   "metrics": {
     "totalUsers": "Users rows that are not deleted.",
@@ -132,6 +135,7 @@
     "returningUserPct": "Users with two or more distinct active days in the range divided by active users.",
     "avgRatingsPerReceipt": "Ratings divided by imported receipts.",
     "activePartners": "Partner restaurants with activity in the range.",
+    "observedPurchaseValueMinor": "Sum of receipt totals seen through Epsilon. This is not revenue.",
     "cashbackConfirmedMinor": "Ledger entries of type earned with status confirmed. Demo and test data is excluded.",
     "cashbackConfirmed": "Ledger entries of type earned with status confirmed. Demo and test data is excluded.",
     "cashbackPending": "Earned cashback that is not confirmed yet.",
@@ -152,7 +156,7 @@
     "neverScanned": "Users with no imported receipt.",
     "scannedNeverRated": "Users with at least one receipt and no rating.",
     "ratedNonPartner": "Ratings given to merchants that are not Epsilon partners.",
-    "notificationOptInRate": "Users with at least one notification category enabled.",
+    "notificationOptInRate": "Share of users with each notification category on. The main figure is reminders.",
     "notifSent": "Notifications created in the range.",
     "notifRead": "Notifications opened by the user.",
     "pushDevices": "Registered push devices. Delivery is not tracked yet.",

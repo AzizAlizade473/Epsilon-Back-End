@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { adminAudit, authIdentities, users } from '../../src/db/schema.js';
 import { csvCell, maskEmail, maskId, maskPhone } from '../../src/admin/mask.js';
+import * as S from '../../admin/src/api/schemas.js';
 import { adminSetup, seed } from './helpers.js';
 
 const OPS = 'ops@epsilon.test';
@@ -84,6 +85,23 @@ describe('admin analytics', async () => {
     expect(health).toMatchObject({ imported: 2, failures: 'not_tracked', unsupported: 0 });
     expect((await analyst('GET', '/costs')).body).toMatchObject({ email: 'not_tracked', push: 'not_tracked' });
     expect((await analyst('GET', '/notifications/stats')).body.delivery).toBe('not_tracked');
+  });
+
+  it('every response parses with the admin web app schemas (contract drift breaks the page)', async () => {
+    const dishKey = (await analyst('GET', '/dishes?minRatings=0')).body.items[0].key;
+    const cases: [string, { safeParse: (v: unknown) => { success: boolean; error?: unknown } }][] = [
+      ['/overview', S.overviewSchema], ['/users', S.usersSchema], ['/users/analytics', S.userAnalyticsSchema], [`/users/${data.u1.id}`, S.userDetailSchema],
+      ['/restaurants', S.restaurantsSchema], [`/restaurants/r:${data.r1.id}`, S.restaurantDetailSchema], ['/restaurants/m:OBJ-1', S.restaurantDetailSchema],
+      ['/dishes?minRatings=0', S.dishesSchema], [`/dishes/${dishKey}`, S.dishDetailSchema], ['/reviews', S.reviewsSchema], [`/reviews/${data.fb1.id}`, S.reviewDetailSchema],
+      ['/receipts', S.receiptsSchema], [`/receipts/${data.p1.id}`, S.receiptDetailSchema], ['/receipts/health', S.receiptHealthSchema], ['/cashback', S.cashbackSchema],
+      ['/cashback/ledger', S.ledgerSchema], ['/notifications/stats', S.notificationStatsSchema], ['/notifications', S.notificationsSchema], ['/costs', S.costsSchema],
+      ['/health', S.healthSchema], ['/search?q=lavash', S.searchSchema],
+    ];
+    for (const [url, schema] of cases) {
+      const res = await analyst('GET', url);
+      const parsed = schema.safeParse(res.body);
+      expect(parsed.success, `${url}: ${JSON.stringify(parsed.error)?.slice(0, 400)}`).toBe(true);
+    }
   });
 
   it('dishes merge the VAT marker and case; dimensions come from the quick-comment catalogue', async () => {

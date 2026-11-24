@@ -5,7 +5,7 @@ import { TimeChart } from '../components/charts';
 import { Boundary, DataTable } from '../components/data';
 import { NotTrackedPanel } from '../components/page';
 import { Kpi, Panel } from '../components/ui';
-import { fmtMetric, fmtNum } from '../lib/format';
+import { fmtMetric, fmtNum, fmtRate } from '../lib/format';
 
 export function Component() {
   const { t } = useTranslation();
@@ -16,18 +16,24 @@ export function Component() {
       <Boundary q={ua}>
         {(a) => {
           const nt = (k: string) => a.tracking?.[k] === 'not_tracked';
-          const tile = (k: 'returningUserPct' | 'avgReceiptsPerUser' | 'avgRatingsPerUser' | 'neverScanned' | 'scannedNeverRated' | 'ratedNonPartner' | 'notificationOptInRate') => (
+          const tile = (k: 'returningUserPct' | 'avgReceiptsPerUser' | 'avgRatingsPerUser' | 'neverScanned' | 'scannedNeverRated' | 'ratedNonPartner') => (
             <Kpi label={t(`metricNames.${k}`)} metric={k} value={fmtMetric(k, a[k])} notTracked={nt(k)} />
           );
           // Series arrive as { date, count } (or value); the chart reads a single `count` key.
           const norm = (s: typeof a.registrations) => s.map((x) => ({ date: x.date, count: x.count ?? x.value ?? 0 }));
           return (
             <>
-              <div className="grid-4">
+              <div className="kpis">
                 {tile('returningUserPct')}
                 {tile('avgReceiptsPerUser')}
                 {tile('avgRatingsPerUser')}
-                {tile('notificationOptInRate')}
+                <Kpi
+                  label={t('metricNames.notificationOptInRate')}
+                  metric="notificationOptInRate"
+                  value={fmtRate(a.notificationOptInRate?.reminders)}
+                  notTracked={nt('notificationOptInRate')}
+                  sub={`${t('users.cashbackUpdates')} ${fmtRate(a.notificationOptInRate?.cashbackUpdates)} · ${t('users.partnerUpdates')} ${fmtRate(a.notificationOptInRate?.partnerUpdates)}`}
+                />
                 {tile('neverScanned')}
                 {tile('scannedNeverRated')}
                 {tile('ratedNonPartner')}
@@ -51,7 +57,7 @@ export function Component() {
                     rowKey={(r) => JSON.stringify(r)}
                     cols={Object.keys(a.cohorts[0]!).map((k) => ({
                       id: k,
-                      header: k,
+                      header: t(`product.cohort.${k}`, { defaultValue: k }),
                       num: typeof (a.cohorts as Record<string, unknown>[])[0]![k] === 'number',
                       cell: (r: Record<string, unknown>) => String(r[k] ?? '—'),
                     }))}

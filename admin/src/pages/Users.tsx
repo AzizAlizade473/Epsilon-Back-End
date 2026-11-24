@@ -5,7 +5,7 @@ import { usersSchema, type UserRow } from '../api/schemas';
 import { Boundary, DataTable, Pager } from '../components/data';
 import { SearchField, Toolbar, useDebounced } from '../components/page';
 import { StatusBadge } from '../components/tables';
-import { Badge, Panel } from '../components/ui';
+import { Panel } from '../components/ui';
 import { fmtDateTime, fmtMoney, fmtNum } from '../lib/format';
 
 /** Contact is masked by the server (+994 55 ••• •• 55, a•••@gmail.com) and rendered verbatim. */
@@ -20,7 +20,7 @@ export function UsersTable({ items, loading }: { items: UserRow[]; loading?: boo
       href={(u) => `/users/${encodeURIComponent(u.id)}`}
       cols={[
         { id: 'user', header: t('users.user'), cell: (u) => <span className="strong">{u.name ?? t('users.unnamed')}</span> },
-        { id: 'contact', header: t('users.contact'), cell: (u) => <span className="mono stack-sm"><span>{u.emailMasked ?? '—'}</span><span>{u.phoneMasked ?? '—'}</span></span> },
+        { id: 'contact', header: t('users.contact'), cell: (u) => u.emailMasked || u.phoneMasked ? <span className="cell-stack">{u.emailMasked && <span>{u.emailMasked}</span>}{u.phoneMasked && <span className="muted">{u.phoneMasked}</span>}</span> : <span className="muted">—</span> },
         { id: 'joined', header: t('users.joined'), hideSm: true, cell: (u) => fmtDateTime(u.createdAt) },
         { id: 'last', header: t('users.lastActive'), hideSm: true, cell: (u) => fmtDateTime(u.lastActiveAt) },
         { id: 'receipts', header: t('common.receipts'), num: true, cell: (u) => fmtNum(u.receipts) },
@@ -30,14 +30,16 @@ export function UsersTable({ items, loading }: { items: UserRow[]; loading?: boo
           id: 'notif',
           header: t('users.notifications'),
           hideSm: true,
-          cell: (u) => (
-            <span className="chips-inline">
-              {u.notifications?.reminders ? <Badge>{t('users.reminders')}</Badge> : null}
-              {u.notifications?.cashbackUpdates ? <Badge>{t('users.cashbackUpdates')}</Badge> : null}
-              {u.notifications?.partnerUpdates ? <Badge>{t('users.partnerUpdates')}</Badge> : null}
-              <span className="muted num">{t('users.devices', { n: u.notifications?.pushDevices ?? 0 })}</span>
-            </span>
-          ),
+          cell: (u) => {
+            const n = u.notifications;
+            const on = (['reminders', 'cashbackUpdates', 'partnerUpdates'] as const).filter((k) => n?.[k]).map((k) => t(`users.${k}`));
+            return (
+              <span className="cell-stack">
+                <span>{on.length ? on.join(', ') : t('users.noTopics')}</span>
+                <span className="muted num">{t('users.devices', { count: n?.pushDevices ?? 0 })}</span>
+              </span>
+            );
+          },
         },
         { id: 'status', header: t('common.status'), cell: (u) => <StatusBadge status={u.status} ns="userStatus" /> },
       ]}

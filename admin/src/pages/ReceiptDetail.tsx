@@ -22,24 +22,23 @@ export function Component() {
             title={r.merchant ?? r.restaurant ?? r.id}
             sub={<span className="mono">{r.fiscalIdMasked ?? r.id}</span>}
           />
-          <div className="grid-4">
+          <div className="kpis">
             <Kpi label={t('receipts.total')} metric="observed" value={fmtMoney(r.totalMinor)} />
             <Kpi label={t('receipts.imported')} value={fmtDateTime(r.importedAt)} />
-            <Kpi label={t('receipts.engine')} value={[r.provider, r.engine].filter(Boolean).join(' / ') || '—'} />
+            <Kpi label={t('receipts.engine')} value={<span className="kpi-text">{t(`provider.${r.provider}`, { defaultValue: r.provider ?? '—' })}</span>} sub={r.engine ? t(`engine.${r.engine}`, { defaultValue: r.engine }) : undefined} />
             <Kpi label={t('common.status')} value={<StatusBadge status={r.status} ns="receiptStatus" />} />
           </div>
-          <Panel title={t('receipts.lines')}>
-            <p className="muted">{t('receipts.originalNames')}</p>
+          <Panel title={t('receipts.lines')} actions={<span className="muted panel-note">{t('receipts.originalNames')}</span>}>
             {r.lines?.length ? (
               <DataTable
                 caption={t('receipts.lines')}
                 data={r.lines}
-                rowKey={(l) => `${l.name}${l.qty}${l.priceMinor}`}
+                rowKey={(l) => String(l.lineNo)}
                 cols={[
-                  { id: 'name', header: t('receipts.lineName'), cell: (l) => l.name },
-                  { id: 'qty', header: t('receipts.qty'), num: true, cell: (l) => fmtNum(l.qty, 2) },
-                  { id: 'price', header: t('receipts.price'), num: true, cell: (l) => fmtMoney(l.priceMinor) },
-                  { id: 'total', header: t('receipts.total'), num: true, cell: (l) => fmtMoney(l.totalMinor) },
+                  { id: 'name', header: t('receipts.lineName'), cell: (l) => l.originalName },
+                  { id: 'qty', header: t('receipts.qty'), num: true, cell: (l) => fmtNum(l.quantityMilli / 1000, l.quantityMilli % 1000 ? 3 : 0) },
+                  { id: 'price', header: t('receipts.price'), num: true, cell: (l) => fmtMoney(l.unitPriceMinor) },
+                  { id: 'total', header: t('receipts.total'), num: true, cell: (l) => fmtMoney(l.lineTotalMinor) },
                 ]}
               />
             ) : (

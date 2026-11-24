@@ -70,25 +70,21 @@ export function Component() {
               back={{ to: '/users', label: t('nav.users') }}
               title={u.name ?? t('users.unnamed')}
               sub={
-                <span className="stack-sm mono">
-                  <span>{u.emailMasked ?? '—'}</span>
-                  <span>{u.phoneMasked ?? '—'}</span>
+                <span className="head-meta">
+                  {(u.emailMasked || u.phoneMasked) && <span className="mono">{[u.emailMasked, u.phoneMasked].filter(Boolean).join(' · ')}</span>}
+                  <span>
+                    {t('users.joined')} {fmtDateTime(u.createdAt)} · {t('users.lastActive')} {fmtDateTime(u.lastActiveAt)}
+                  </span>
                 </span>
               }
               actions={<RevealContact userId={u.id} />}
             />
-            <div className="grid-4">
+            <div className="kpis">
               <Kpi label={t('common.status')} value={<StatusBadge status={u.status} ns="userStatus" />} />
               <Kpi label={t('common.receipts')} value={fmtNum(u.receipts)} />
               <Kpi label={t('common.ratings')} value={fmtNum(u.ratings)} />
               <Kpi label={t('nav.cashback')} value={fmtMoney(u.cashbackMinor)} />
             </div>
-            <dl className="kv kv-row">
-              <dt>{t('users.joined')}</dt>
-              <dd>{fmtDateTime(u.createdAt)}</dd>
-              <dt>{t('users.lastActive')}</dt>
-              <dd>{fmtDateTime(u.lastActiveAt)}</dd>
-            </dl>
             <Panel title={t('nav.receipts')}>
               <ReceiptsTable items={d.receipts} />
             </Panel>
@@ -102,7 +98,7 @@ export function Component() {
               {d.preferences && Object.keys(d.preferences).length ? (
                 <dl className="kv">
                   {Object.entries(d.preferences).map(([k, v]) => (
-                    <div key={k} className="kv-pair">
+                    <div key={k}>
                       <dt>{t(`users.pref.${k}`, { defaultValue: k })}</dt>
                       <dd>{typeof v === 'boolean' ? (v ? t('common.on') : t('common.off')) : String(v ?? '—')}</dd>
                     </div>

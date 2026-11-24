@@ -65,7 +65,8 @@ export const reviewSchema = z.looseObject({
   dish: label,
   reviewer: label,
   rating: z.number(),
-  quickComments: z.array(z.string()).nullish(),
+  /** Codes; the API sends `{ code, dimension, sentiment }` (older rows: plain strings). */
+  quickComments: z.array(z.union([z.string(), z.looseObject({ code: z.string() }).transform((q) => q.code)])).nullish(),
   comment: str,
   createdAt: z.string(),
   updatedAt: str,
@@ -113,13 +114,13 @@ export type ReceiptRow = z.infer<typeof receiptItem>;
 export const receiptsSchema = list(receiptItem);
 export const receiptDetailSchema = receiptItem.extend({
   merchant: label,
-  lines: z.array(z.looseObject({ name: z.string(), qty: num, priceMinor: num, totalMinor: num })).nullish(),
+  lines: z.array(z.looseObject({ lineNo: z.number(), originalName: z.string(), quantityMilli: z.number(), unitPriceMinor: z.number(), lineTotalMinor: z.number() })).nullish(),
   reviews: z.array(reviewSchema).nullish(),
   ledger: z.array(ledgerEntry).nullish(),
 });
 const counts = z.union([
   z.record(z.string(), z.number()),
-  z.array(z.looseObject({ name: str, key: str, provider: str, engine: str, count: z.number() })),
+  z.array(z.looseObject({ name: str, key: str, provider: str, engine: str, count: num, receipts: num })),
 ]);
 export const receiptHealthSchema = obj({
   imported: z.number(),
@@ -164,7 +165,8 @@ export const userAnalyticsSchema = obj({
   neverScanned: num,
   scannedNeverRated: num,
   ratedNonPartner: num,
-  notificationOptInRate: num,
+  /** Share (0..1) of users with each category on. */
+  notificationOptInRate: z.looseObject({ reminders: num, cashbackUpdates: num, partnerUpdates: num }).nullish(),
   cohorts: z.union([NOT_TRACKED, z.array(z.looseObject({}))]).nullish(),
 });
 
@@ -233,7 +235,7 @@ export const notificationStatsSchema = obj({
   read: z.number(),
   byKind: z.array(z.looseObject({ kind: z.string(), sent: num, read: num })),
   optIn: z.looseObject({ reminders: num, cashbackUpdates: num, partnerUpdates: num }),
-  devices: num,
+  devices: z.looseObject({ tokens: num, users: num }),
   delivery: z.union([NOT_TRACKED, z.looseObject({})]).nullish(),
 });
 

@@ -1,8 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import type { DishRow, LedgerEntry, NotificationRow, ReceiptRow } from '../api/schemas';
-import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct, fmtRating } from '../lib/format';
+import { fmtDate, fmtDateTime, fmtMoney, fmtNum, fmtPct } from '../lib/format';
 import { DataTable } from './data';
-import { Badge, Stars } from './ui';
+import { Badge, RatingCell } from './ui';
 
 const tone = (s?: string | null) => (s === 'confirmed' || s === 'ok' || s === 'success' ? 'good' : s === 'pending' ? 'warn' : s === 'reversed' || s === 'failed' || s === 'denied' ? 'bad' : 'muted');
 export const StatusBadge = ({ status, ns = 'ledger' }: { status?: string | null; ns?: string }) => {
@@ -83,7 +83,7 @@ export function DishesTable({ items, showRestaurant = true, loading }: { items: 
         ...(showRestaurant ? [{ id: 'restaurant', header: t('nav.restaurants'), cell: (r: DishRow) => [r.restaurant, r.branch].filter(Boolean).join(' · ') || '—' }] : []),
         { id: 'purchases', header: t('dishes.purchases'), num: true, hideSm: true, cell: (r) => fmtNum(r.purchases) },
         { id: 'ratings', header: t('dishes.sample'), num: true, cell: (r) => fmtNum(r.ratings) },
-        { id: 'avg', header: t('common.avgRating'), num: true, cell: (r) => <span className="stars-cell"><Stars value={r.avgRating} /> {fmtRating(r.avgRating)}</span> },
+        { id: 'avg', header: t('common.avgRating'), num: true, cell: (r) => <RatingCell value={r.avgRating} /> },
         { id: 'pos', header: t('common.positive'), num: true, hideSm: true, cell: (r) => <span className="pos">{fmtPct(r.positivePct)}</span> },
         { id: 'neg', header: t('common.negative'), num: true, hideSm: true, cell: (r) => <span className="neg">{fmtPct(r.negativePct)}</span> },
         { id: 'last', header: t('dishes.lastRated'), hideSm: true, cell: (r) => fmtDate(r.lastRatedAt) },

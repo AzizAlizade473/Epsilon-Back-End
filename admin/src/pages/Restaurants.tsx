@@ -4,8 +4,8 @@ import { usePaged } from '../api/hooks';
 import { restaurantsSchema } from '../api/schemas';
 import { Boundary, DataTable, Pager } from '../components/data';
 import { SearchField, SelectField, Toolbar, useDebounced } from '../components/page';
-import { Panel, RestaurantCell, Stars } from '../components/ui';
-import { fmtDateTime, fmtNum, fmtRating, categoryLabel } from '../lib/format';
+import { Panel, RestaurantCell, RatingCell } from '../components/ui';
+import { fmtDateTime, fmtNum, categoryLabel } from '../lib/format';
 
 export function Component() {
   const { t } = useTranslation();
@@ -45,7 +45,7 @@ export function Component() {
                   { id: 'receipts', header: t('common.receipts'), num: true, cell: (r) => fmtNum(r.receipts) },
                   { id: 'reviewers', header: t('restaurants.reviewers'), num: true, hideSm: true, cell: (r) => fmtNum(r.reviewers) },
                   { id: 'ratings', header: t('common.ratings'), num: true, cell: (r) => fmtNum(r.ratings) },
-                  { id: 'avg', header: t('common.avgRating'), num: true, cell: (r) => <span className="stars-cell"><Stars value={r.avgRating} /> {fmtRating(r.avgRating)}</span> },
+                  { id: 'avg', header: t('common.avgRating'), num: true, cell: (r) => <RatingCell value={r.avgRating} /> },
                   { id: 'last', header: t('restaurants.lastActivity'), hideSm: true, cell: (r) => fmtDateTime(r.lastActivityAt) },
                 ]}
               />

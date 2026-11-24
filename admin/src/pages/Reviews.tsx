@@ -57,7 +57,7 @@ export function Component() {
                   {
                     id: 'comment',
                     header: t('reviews.comment'),
-                    cell: (r) => (
+                    cell: (r) => !r.quickComments?.length && !r.comment ? <span className="muted">—</span> : (
                       <span className="comment-cell">
                         <QuickComments items={r.quickComments} />
                         {r.comment && <span className="clamp">{r.comment}</span>}
@@ -68,7 +68,7 @@ export function Component() {
                     id: 'flags',
                     header: t('common.status'),
                     hideSm: true,
-                    cell: (r) => (
+                    cell: (r) => !r.edited && !isHidden(r.moderation) ? <span className="muted">—</span> : (
                       <span className="chips-inline">
                         {r.edited && <Badge>{t('reviews.edited')}</Badge>}
                         {isHidden(r.moderation) && <Badge tone="warn">{t('reviews.hidden')}</Badge>}

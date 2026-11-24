@@ -4,7 +4,7 @@ import { useData, usePaged } from '../api/hooks';
 import { cashbackSchema, ledgerSchema } from '../api/schemas';
 import { TimeChart } from '../components/charts';
 import { Boundary, DataTable, Pager } from '../components/data';
-import { SelectField, Toolbar } from '../components/page';
+import { SelectField } from '../components/page';
 import { LedgerTable } from '../components/tables';
 import { Kpi, Panel } from '../components/ui';
 import { fmtMoney } from '../lib/format';
@@ -21,7 +21,7 @@ export function Component() {
       <Boundary q={q}>
         {(d) => (
           <>
-            <div className="grid-5">
+            <div className="kpis">
               <Kpi label={t('cashback.confirmed')} metric="cashbackConfirmed" value={fmtMoney(d.confirmedMinor)} />
               <Kpi label={t('cashback.pending')} metric="cashbackPending" value={fmtMoney(d.pendingMinor)} />
               <Kpi label={t('cashback.reversed')} metric="cashbackReversed" value={fmtMoney(d.reversedMinor)} />
@@ -60,10 +60,10 @@ export function Component() {
           </>
         )}
       </Boundary>
-      <Toolbar>
-        <SelectField label={t('common.status')} value={status} onChange={setStatus} options={[['', t('common.all')], ...STATUSES.map((s): [string, string] => [s, t(`ledger.${s}`)])]} />
-      </Toolbar>
-      <Panel title={t('cashback.ledger')}>
+      <Panel
+        title={t('cashback.ledger')}
+        actions={<SelectField label={t('common.status')} value={status} onChange={setStatus} options={[['', t('common.all')], ...STATUSES.map((s): [string, string] => [s, t(`ledger.${s}`)])]} />}
+      >
         <Boundary q={ledger.q}>
           {(d) => (
             <>

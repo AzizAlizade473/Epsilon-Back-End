@@ -14,7 +14,7 @@ export function Component() {
       {(c) => (
         <div className="stack">
           <p className="muted">{t('costs.estimates')}</p>
-          <div className="grid-4">
+          <div className="kpis">
             <Kpi label={t('costs.geminiCalls')} metric="geminiCalls" value={fmtNum(c.gemini.calls)} />
             <Kpi label={t('costs.geminiEstimate')} metric="geminiEstimate" value={<>{fmtMoney(c.gemini.estimate.minor)} <Badge tone="warn">{t('costs.estimate')}</Badge></>} sub={c.gemini.estimate.basis} />
             <div className="kpi">
