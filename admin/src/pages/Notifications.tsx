@@ -7,8 +7,8 @@ import { SelectField, Toolbar } from '../components/page';
 import { NotificationsTable } from '../components/tables';
 import { Kpi, NotTracked, Panel } from '../components/ui';
 import { fmtNum, fmtRate } from '../lib/format';
+import { NOTIFICATION_KINDS } from '../lib/filters';
 
-const KINDS = ['reminder', 'cashback', 'partner'];
 
 export function Component() {
   const { t } = useTranslation();
@@ -57,7 +57,7 @@ export function Component() {
         )}
       </Boundary>
       <Toolbar>
-        <SelectField label={t('common.type')} value={kind} onChange={setKind} options={[['', t('common.all')], ...KINDS.map((k): [string, string] => [k, t(`kind.${k}`)])]} />
+        <SelectField label={t('common.type')} value={kind} onChange={setKind} options={[['', t('common.all')], ...NOTIFICATION_KINDS.map((k): [string, string] => [k, t(`kind.${k}`)])]} />
       </Toolbar>
       <Panel title={t('notifications.history')}>
         <Boundary q={history.q}>

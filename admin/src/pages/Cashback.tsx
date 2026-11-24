@@ -8,14 +8,15 @@ import { SelectField } from '../components/page';
 import { LedgerTable } from '../components/tables';
 import { Kpi, Panel } from '../components/ui';
 import { fmtMoney } from '../lib/format';
+import { LEDGER_STATUSES, LEDGER_TYPES } from '../lib/filters';
 
-const STATUSES = ['confirmed', 'pending', 'reversed', 'expired'];
 
 export function Component() {
   const { t } = useTranslation();
+  const [type, setType] = useState('');
   const [status, setStatus] = useState('');
   const q = useData('/cashback', cashbackSchema, {}, { range: true });
-  const ledger = usePaged('/cashback/ledger', ledgerSchema, { status }, { range: true });
+  const ledger = usePaged('/cashback/ledger', ledgerSchema, { type, status }, { range: true });
   return (
     <div className="stack">
       <Boundary q={q}>
@@ -62,7 +63,12 @@ export function Component() {
       </Boundary>
       <Panel
         title={t('cashback.ledger')}
-        actions={<SelectField label={t('common.status')} value={status} onChange={setStatus} options={[['', t('common.all')], ...STATUSES.map((s): [string, string] => [s, t(`ledger.${s}`)])]} />}
+        actions={
+          <>
+            <SelectField label={t('common.type')} value={type} onChange={setType} options={[['', t('common.all')], ...LEDGER_TYPES.map((s): [string, string] => [s, t(`ledger.${s}`)])]} />
+            <SelectField label={t('common.status')} value={status} onChange={setStatus} options={[['', t('common.all')], ...LEDGER_STATUSES.map((s): [string, string] => [s, t(`ledger.${s}`)])]} />
+          </>
+        }
       >
         <Boundary q={ledger.q}>
           {(d) => (

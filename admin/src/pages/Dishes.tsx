@@ -6,15 +6,16 @@ import { Boundary, Pager } from '../components/data';
 import { InfoTip, Panel } from '../components/ui';
 import { SearchField, SelectField, Toolbar, useDebounced } from '../components/page';
 import { DishesTable } from '../components/tables';
+import { DISH_SORTS } from '../lib/filters';
 
 export function Component() {
   const { t } = useTranslation();
   const [text, setText] = useState('');
-  const [sort, setSort] = useState('best');
-  const [min, setMin] = useState('3');
+  const [sort, setSort] = useState<string>('avgRating');
+  const [min, setMin] = useState('1');
   const q = useDebounced(text.trim());
-  // Rankings need a minimum sample (default 3); the sample size is always shown in the table.
-  const minRatings = Math.max(1, Math.floor(Number(min) || 3));
+  // The sample size is always shown in the table; raise the minimum for a fairer ranking.
+  const minRatings = Math.max(1, Math.floor(Number(min) || 1));
   const p = usePaged('/dishes', dishesSchema, { q, sort, minRatings });
   return (
     <div className="stack">
@@ -24,12 +25,7 @@ export function Component() {
           label={t('dishes.sort')}
           value={sort}
           onChange={setSort}
-          options={[
-            ['best', t('dishes.sortBest')],
-            ['worst', t('dishes.sortWorst')],
-            ['reviewed', t('dishes.sortReviewed')],
-            ['observed', t('dishes.sortObserved')],
-          ]}
+          options={DISH_SORTS.map((s): [string, string] => [s, t(`dishes.sorts.${s}`)])}
         />
         <label className="field">
           <span className="field-label">

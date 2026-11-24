@@ -28,10 +28,10 @@ export async function listReceipts(ro: Db, q: z.infer<typeof receiptsQuery>, now
   const offset = offsetOf(q.cursor);
   const rows = await all<GRow>(
     ro,
-    sql`${BASE}, g as (select rkey, (array_agg(id order by claimed_at))[1] as id, max(fiscal_id) as fiscal_id, max(mkey) as mkey, max(mname) as mname,
-          max(business_type) as category, min(claimed_at) as imported_at, max(total_minor) as total_minor, max(status) as status,
-          max(provider) as provider, max(engine) as engine, max(bps) as bps
-        from r where ${between('claimed_at', optionalRange(q, now))} group by rkey)
+    sql`${BASE}, g as (select r.rkey, (array_agg(r.id order by (u.deleted_at is null) desc, r.claimed_at))[1] as id, max(r.fiscal_id) as fiscal_id,
+          max(r.mkey) as mkey, max(r.mname) as mname, max(r.business_type) as category, min(r.claimed_at) as imported_at, max(r.total_minor) as total_minor,
+          max(r.status) as status, max(r.provider) as provider, max(r.engine) as engine, max(r.bps) as bps
+        from r left join users u on u.id = r.user_id where ${between('r.claimed_at', optionalRange(q, now))} group by r.rkey)
       select g.id, g.fiscal_id, g.mkey, g.mname, g.category, g.imported_at, g.total_minor, g.status, g.provider, g.engine, g.bps,
         (select count(*)::int from purchase_items pi where pi.purchase_id = g.id) as items,
         (select count(*)::int from f where f.rkey = g.rkey and f.hidden_at is null) as ratings
@@ -72,10 +72,10 @@ export async function receiptDetail(ro: Db, id: string) {
   if (!r) throw notFound();
   const [items, reviews, ledger] = await Promise.all([
     all<{ name: string; quantity: number; unit_price_minor: number }>(ro, sql`select name, quantity, unit_price_minor from purchase_items where purchase_id = ${id}::uuid order by line_no, name`),
-    reviewRows(ro, sql`f.purchase_id = ${id}::uuid`, 100),
+    reviewRows(ro, sql`f.rkey = (select rkey from r where id = ${id}::uuid)`, 100),
     all<{ id: string; type: string; status: string; amount_minor: number; created_at: Date }>(
       ro,
-      sql`${BASE} select id, type::text, status::text, amount_minor, created_at from led where purchase_item_id in (select id from it where purchase_id = ${id}::uuid) order by created_at`,
+      sql`${BASE} select id, type::text, status::text, amount_minor, created_at from led where purchase_item_id in (select id from it where rkey = (select rkey from r where id = ${id}::uuid)) order by created_at`,
     ),
   ]);
   return {

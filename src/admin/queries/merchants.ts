@@ -158,7 +158,7 @@ export async function restaurantDetail(ro: Db, key: string, q: z.infer<typeof de
 export const dishesQuery = listQuery.extend({
   restaurant: merchantKey.optional(),
   minRatings: z.coerce.number().int().min(0).max(1000).default(3),
-  sort: z.enum(['ratings', 'avgRating', 'purchases', 'recent']).optional(),
+  sort: z.enum(['ratings', 'avgRating', 'worst', 'purchases', 'recent']).optional(),
 });
 const D_SORT = {
   ratings: 'ratings desc, dkey',

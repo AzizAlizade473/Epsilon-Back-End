@@ -88,11 +88,15 @@ export async function health(ro: Db, version: string) {
 
 // ---------------------------------------------------------------- audit
 
-export const auditQuery = listQuery.merge(rangeQuery).extend({ admin: uuid.optional(), action: z.string().regex(/^[\w.:-]{1,60}$/).optional() });
+export const auditQuery = listQuery.merge(rangeQuery).extend({
+  /** Admin id or email. */
+  admin: z.union([uuid, z.string().trim().toLowerCase().email().max(254)]).optional(),
+  action: z.string().regex(/^[\w.:-]{1,60}$/).optional(),
+});
 
 export async function listAudit(ro: Db, q: z.infer<typeof auditQuery>, now: Date) {
   const c: SQL[] = [between('a.created_at', optionalRange(q, now))];
-  if (q.admin) c.push(sql`a.admin_id = ${q.admin}::uuid`);
+  if (q.admin) c.push(q.admin.includes('@') ? sql`lower(u.email) = ${q.admin}` : sql`a.admin_id = ${q.admin}::uuid`);
   if (q.action) c.push(sql`a.action = ${q.action}`);
   const offset = offsetOf(q.cursor);
   const rows = await all<{

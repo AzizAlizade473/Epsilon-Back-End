@@ -256,7 +256,17 @@ export const healthSchema = z.looseObject({
 });
 
 export const auditSchema = list(
-  z.looseObject({ id, admin: label, action: z.string(), entityType: str, entityId: str, reason: str, outcome: str, ip: str, createdAt: z.string() }),
+  z.looseObject({
+    id,
+    admin: z.union([z.string(), z.looseObject({ email: str, name: str })]).transform((a) => (typeof a === 'string' ? a : (a.name ?? a.email ?? null))).nullish(),
+    action: z.string(),
+    entityType: str,
+    entityId: str,
+    reason: str,
+    outcome: str,
+    ip: str,
+    at: z.string(),
+  }),
 );
 
 const hit = z.looseObject({ id: id.optional(), key: z.string().optional(), name: str, title: str, restaurant: label, dish: label, emailMasked: str, comment: str, rating: num });

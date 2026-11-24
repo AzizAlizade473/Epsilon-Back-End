@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { eq } from 'drizzle-orm';
-import { adminAudit, authIdentities, users } from '../../src/db/schema.js';
+import { adminAudit, authIdentities, purchases, users } from '../../src/db/schema.js';
 import { csvCell, maskEmail, maskId, maskPhone } from '../../src/admin/mask.js';
 import * as S from '../../admin/src/api/schemas.js';
+import { FILTER_CASES } from '../../admin/src/lib/filters.js';
 import { adminSetup, seed } from './helpers.js';
 
 const OPS = 'ops@epsilon.test';
@@ -72,6 +73,16 @@ describe('admin analytics', async () => {
     expect(kpis.mau).toBe(1);
   });
 
+  it('a receipt claimed by several accounts is listed by a live claim and shows every review of it', async () => {
+    // u2 (deleted above) claimed the same fiscal receipt as u1, and earlier.
+    await t.db.update(users).set({ deletedAt: new Date('2026-11-13T09:00:00Z') }).where(eq(users.id, data.u2.id));
+    await t.db.update(purchases).set({ claimedAt: new Date('2026-11-13T05:30:00Z') }).where(eq(purchases.id, data.p1.id));
+    const ids = (await analyst('GET', '/receipts')).body.items.map((r: { id: string }) => r.id);
+    expect(ids).toContain(data.p1.id);
+    const detail = (await analyst('GET', `/receipts/${data.p1.id}`)).body;
+    expect(detail.reviews.map((r: { id: string }) => r.id)).toEqual(expect.arrayContaining([data.fb1.id, data.fb2.id]));
+  });
+
   it('every analytics endpoint answers with valid SQL', async () => {
     for (const url of [
       '/users', '/users/analytics', `/users/${data.u1.id}`, '/restaurants', `/restaurants/r:${data.r1.id}`, '/restaurants/m:OBJ-1', '/dishes?minRatings=0',
@@ -102,6 +113,24 @@ describe('admin analytics', async () => {
       const parsed = schema.safeParse(res.body);
       expect(parsed.success, `${url}: ${JSON.stringify(parsed.error)?.slice(0, 400)}`).toBe(true);
     }
+  });
+
+  it('every filter and sort value the pages offer is accepted by the API', async () => {
+    for (const [path, key, values] of FILTER_CASES) {
+      for (const v of values) {
+        const res = await analyst('GET', `${path}?${key}=${encodeURIComponent(v)}`);
+        expect(res.status, `${path}?${key}=${v} ${res.text.slice(0, 200)}`).toBe(200);
+      }
+    }
+    // Audit log (super admin only): parses, and filters by admin email as well as id.
+    await t.addAdmin('root@epsilon.test', 'super_admin');
+    const root = t.as('root@epsilon.test', await t.login('root@epsilon.test'));
+    for (const url of ['/audit', '/audit?admin=root@epsilon.test', '/audit?action=login']) {
+      const res = await root('GET', url);
+      expect(res.status, `${url} ${res.text.slice(0, 200)}`).toBe(200);
+      expect(S.auditSchema.safeParse(res.body).success, url).toBe(true);
+    }
+    expect((await root('GET', '/audit?admin=root@epsilon.test')).body.items.length).toBeGreaterThan(0);
   });
 
   it('dishes merge the VAT marker and case; dimensions come from the quick-comment catalogue', async () => {

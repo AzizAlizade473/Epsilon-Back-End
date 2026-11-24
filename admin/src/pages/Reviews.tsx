@@ -7,9 +7,9 @@ import { Boundary, DataTable, Pager } from '../components/data';
 import { SelectField, Toolbar } from '../components/page';
 import { QuickComments, ReviewDrawer } from '../components/reviews';
 import { Badge, Panel, Stars } from '../components/ui';
+import { REVIEW_DIMENSIONS } from '../lib/filters';
 import { fmtDateTime } from '../lib/format';
 
-const DIMENSIONS = ['food', 'service', 'speed', 'price', 'ambience'];
 const yn = (t: (k: string) => string): [string, string][] => [['', t('common.any')], ['true', t('common.yes')], ['false', t('common.no')]];
 
 export function Component() {
@@ -33,7 +33,7 @@ export function Component() {
         <SelectField label={t('reviews.hasComment')} value={f.hasComment} onChange={set('hasComment')} options={yn(t)} />
         <SelectField label={t('reviews.edited')} value={f.edited} onChange={set('edited')} options={yn(t)} />
         <SelectField label={t('reviews.moderated')} value={f.moderated} onChange={set('moderated')} options={yn(t)} />
-        <SelectField label={t('reviews.dimension')} value={f.dimension} onChange={set('dimension')} options={[['', t('common.any')], ...DIMENSIONS.map((d): [string, string] => [d, t(`dimension.${d}`)])]} />
+        <SelectField label={t('reviews.dimension')} value={f.dimension} onChange={set('dimension')} options={[['', t('common.any')], ...REVIEW_DIMENSIONS.map((d): [string, string] => [d, t(`dimension.${d}`)])]} />
         <SelectField label={t('reviews.sentiment')} value={f.sentiment} onChange={set('sentiment')} options={[['', t('common.any')], ['positive', t('common.positive')], ['neutral', t('common.neutral')], ['negative', t('common.negative')]]} />
       </Toolbar>
       <Panel>

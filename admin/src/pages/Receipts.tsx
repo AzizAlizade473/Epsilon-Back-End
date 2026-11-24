@@ -3,10 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { useData, usePaged } from '../api/hooks';
 import { receiptHealthSchema, receiptsSchema } from '../api/schemas';
 import { Boundary, Pager } from '../components/data';
-import { TextField, Toolbar, useDebounced } from '../components/page';
+import { SelectField, Toolbar } from '../components/page';
 import { ReceiptsTable } from '../components/tables';
 import { Kpi, NotTracked, Panel } from '../components/ui';
-import { fmtNum } from '../lib/format';
+import { categoryLabel, fmtNum } from '../lib/format';
+import { RECEIPT_CATEGORIES, RECEIPT_STATUSES } from '../lib/filters';
 
 /** Counts-by-name map or array, normalised to [label, count] rows. */
 const pairs = (v: unknown): [string, number][] =>
@@ -61,13 +62,13 @@ export function Component() {
   const { t } = useTranslation();
   const [status, setStatus] = useState('');
   const [category, setCategory] = useState('');
-  const p = usePaged('/receipts', receiptsSchema, { status: useDebounced(status.trim()), category: useDebounced(category.trim()) }, { range: true });
+  const p = usePaged('/receipts', receiptsSchema, { status, category }, { range: true });
   return (
     <div className="stack">
       <Health />
       <Toolbar>
-        <TextField label={t('common.status')} value={status} onChange={setStatus} />
-        <TextField label={t('common.category')} value={category} onChange={setCategory} />
+        <SelectField label={t('common.status')} value={status} onChange={setStatus} options={[['', t('common.all')], ...RECEIPT_STATUSES.map((s): [string, string] => [s, t(`receiptStatus.${s}`)])]} />
+        <SelectField label={t('common.category')} value={category} onChange={setCategory} options={[['', t('common.all')], ...RECEIPT_CATEGORIES.map((c): [string, string] => [c, categoryLabel(c)])]} />
       </Toolbar>
       <Panel title={t('nav.receipts')}>
         <Boundary q={p.q}>
