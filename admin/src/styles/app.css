@@ -795,11 +795,13 @@ fieldset.choice + fieldset.choice {
   background: var(--tint);
   color: var(--muted);
 }
-.badge-pos {
+.badge-pos,
+.badge-good {
   background: var(--pos-bg);
   color: var(--pos);
 }
-.badge-neg {
+.badge-neg,
+.badge-bad {
   background: var(--neg-bg);
   color: var(--neg);
 }
