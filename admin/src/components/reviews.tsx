@@ -45,7 +45,7 @@ export function ReviewCard({ review: r }: { review: Review }) {
       <QuickComments items={r.quickComments} />
       {r.comment && <p className="review-text">{r.comment}</p>}
       <footer>
-        {r.reviewer && <span className="muted">{r.reviewer}</span>}
+        <span className="muted">{r.reviewer ?? t('users.unnamed')}</span>
         {r.edited && <Badge>{t('reviews.edited')}</Badge>}
         {isHidden(r.moderation) && <Badge tone="warn">{t('reviews.hidden')}</Badge>}
         <Link to={link(`/reviews?review=${encodeURIComponent(r.id)}`)} className="link">

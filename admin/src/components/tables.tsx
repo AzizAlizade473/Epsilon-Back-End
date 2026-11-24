@@ -61,7 +61,7 @@ export function ReceiptsTable({ items, loading, href = true }: { items: ReceiptR
         { id: 'total', header: t('receipts.total'), num: true, cell: (r) => fmtMoney(r.totalMinor) },
         { id: 'items', header: t('receipts.items'), num: true, hideSm: true, cell: (r) => fmtNum(r.items) },
         { id: 'ratings', header: t('common.ratings'), num: true, hideSm: true, cell: (r) => fmtNum(r.ratings) },
-        { id: 'engine', header: t('receipts.engine'), hideSm: true, cell: (r) => [r.provider, r.engine].filter(Boolean).join(' / ') || '—' },
+        { id: 'engine', header: t('receipts.engine'), hideSm: true, cell: (r) => r.provider || r.engine ? <span className="cell-stack"><span>{r.provider ? t(`provider.${r.provider}`, { defaultValue: r.provider }) : '—'}</span>{r.engine && <span className="muted">{t(`engine.${r.engine}`, { defaultValue: r.engine })}</span>}</span> : '—' },
         { id: 'status', header: t('common.status'), cell: (r) => <StatusBadge status={r.status} ns="receiptStatus" /> },
       ]}
     />

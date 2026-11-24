@@ -99,6 +99,8 @@ describe('admin analytics', async () => {
   });
 
   it('every response parses with the admin web app schemas (contract drift breaks the page)', async () => {
+    // Accounts may have no first name: their reviews and receipts must still render.
+    await t.db.update(users).set({ firstName: null, lastName: null }).where(eq(users.id, data.u1.id));
     const dishKey = (await analyst('GET', '/dishes?minRatings=0')).body.items[0].key;
     const cases: [string, { safeParse: (v: unknown) => { success: boolean; error?: unknown } }][] = [
       ['/overview', S.overviewSchema], ['/users', S.usersSchema], ['/users/analytics', S.userAnalyticsSchema], [`/users/${data.u1.id}`, S.userDetailSchema],
@@ -113,6 +115,7 @@ describe('admin analytics', async () => {
       const parsed = schema.safeParse(res.body);
       expect(parsed.success, `${url}: ${JSON.stringify(parsed.error)?.slice(0, 400)}`).toBe(true);
     }
+    await t.db.update(users).set({ firstName: 'Aziz', lastName: 'Aliyev' }).where(eq(users.id, data.u1.id));
   });
 
   it('every filter and sort value the pages offer is accepted by the API', async () => {

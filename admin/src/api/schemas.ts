@@ -7,10 +7,10 @@ import { z } from 'zod';
 const id = z.union([z.string(), z.number()]).transform(String);
 const num = z.number().nullish();
 const str = z.string().nullish();
-/** A name that the API may send as a string or as `{ name }`. */
+/** A name that the API may send as a string or as `{ name }`; the name itself may be missing (accounts without a first name). */
 const label = z
-  .union([z.string(), z.looseObject({ name: z.string() })])
-  .transform((v) => (typeof v === 'string' ? v : v.name))
+  .union([z.string(), z.looseObject({ name: z.string().nullish() })])
+  .transform((v) => (typeof v === 'string' ? v : (v.name ?? null)))
   .nullish();
 const dist = z.array(z.number()).length(5);
 const NOT_TRACKED = z.literal('not_tracked');
