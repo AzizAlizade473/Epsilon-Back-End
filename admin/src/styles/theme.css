@@ -1,0 +1,81 @@
+/* Epsilon Admin theme. Brand anchors come from the mobile app tokens (#282973, #2F67B2, #534C9C, #EEEFF7). */
+:root {
+  color-scheme: light;
+  --font: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Consolas, monospace;
+
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #fafafd;
+  --ink: #23243f;
+  --muted: #5c5e78;
+  --hairline: #e4e6f0;
+  --hairline-strong: #cdd0e2;
+  --tint: #eeeff7;
+
+  --brand: #282973;
+  --brand-ink: #282973;
+  --brand-2: #2f67b2;
+  --accent: #534c9c;
+  --btn: #282973;
+  --btn-hover: #1a1a4e;
+  --link: #2a5da3;
+  --focus: #2f67b2;
+
+  --stars-on: #282973;
+  --stars-off: #d9dbe7;
+
+  --pos: #1a7f4b;
+  --pos-bg: #e3f6ec;
+  --neg: #b42318;
+  --neg-bg: #fdecea;
+  --warn: #9a4a06;
+  --warn-bg: #fff3e0;
+  --tip-bg: #1b1c3a;
+
+  /* Sequential blues: colour encodes data only. */
+  --c1: #282973;
+  --c2: #2f67b2;
+  --c3: #4f86cb;
+  --c4: #7c9fd6;
+  --c5: #a3b8dc;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0c0d1c;
+  --surface: #13142a;
+  --surface-2: #101126;
+  --ink: #ecedf8;
+  --muted: #a5a8c6;
+  --hairline: #26284b;
+  --hairline-strong: #383b68;
+  --tint: #1d1f40;
+
+  --brand: #b8caff;
+  --brand-ink: #b8caff;
+  --btn: #4047c9;
+  --btn-hover: #5058dc;
+  --link: #8db4ff;
+  --focus: #8db4ff;
+
+  --stars-on: #b8caff;
+  --stars-off: #3a3d63;
+
+  --pos: #5fd39a;
+  --pos-bg: #12301f;
+  --neg: #ff8f85;
+  --neg-bg: #3a1714;
+  --warn: #f2b35e;
+  --warn-bg: #33250f;
+  --tip-bg: #2c2f5c;
+
+  --c1: #b8caff;
+  --c2: #7fa6f0;
+  --c3: #5f8bdd;
+  --c4: #4a72bf;
+  --c5: #3c5a9c;
+}

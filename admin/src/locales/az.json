@@ -1,0 +1,163 @@
+{
+  "common": {
+    "all": "Hamısı", "any": "Hər hansı", "yes": "Bəli", "no": "Xeyr", "on": "Açıq", "off": "Bağlı",
+    "amount": "Məbləğ", "avgRating": "Orta qiymət", "cancel": "Ləğv et", "category": "Kateqoriya", "close": "Bağla",
+    "date": "Tarix", "days": "gün", "definition": "Tərif", "details": "Ətraflı", "loading": "Yüklənir",
+    "negative": "Mənfi", "neutral": "Neytral", "positive": "Müsbət", "next": "Növbəti", "previous": "Əvvəlki",
+    "noData": "Bu seçim üçün məlumat yoxdur", "notTracked": "Hələ izlənmir",
+    "notTrackedLong": "Hələ izlənmir. Hadisələrin toplanmasına başlanmayıb.",
+    "page": "Səhifə {{n}}", "pagination": "Səhifələmə", "partner": "Tərəfdaş",
+    "ratingDistribution": "Qiymətlərin bölgüsü", "ratings": "Qiymətlər", "reason": "Səbəb (məcburi)",
+    "receipts": "Qəbzlər", "retry": "Yenidən cəhd et", "sampleData": "Nümunə məlumat", "skip": "Məzmuna keç",
+    "starsOf": "5 ulduzdan {{value}}", "status": "Status", "title": "Başlıq", "total": "cəmi", "type": "Növ",
+    "updated": "Yenilənib", "viewChart": "Qrafikə bax", "viewTable": "Cədvəl kimi göstər", "vsPrevious": "əvvəlki dövrlə müqayisədə",
+    "up": "Artım", "down": "Azalma", "flat": "Dəyişməyib"
+  },
+  "nav": {
+    "label": "Əsas naviqasiya", "open": "Naviqasiyanı aç", "collapse": "Yan paneli yığ", "expand": "Yan paneli aç",
+    "section": { "overview": "İcmal", "customers": "Müştərilər", "ecosystem": "Ekosistem", "money": "Maliyyə", "engagement": "Cəlbetmə", "operations": "Əməliyyatlar", "admin": "İdarəetmə" },
+    "overview": "İcmal", "users": "İstifadəçilər", "restaurants": "Restoranlar", "dishes": "Yeməklər", "reviews": "Rəylər",
+    "receipts": "Qəbzlər", "cashback": "Keşbek", "notifications": "Bildirişlər", "product": "Məhsul analitikası",
+    "health": "Sistemin vəziyyəti", "costs": "Xərclər", "reports": "Hesabatlar və ixrac", "audit": "Audit jurnalı", "settings": "Parametrlər"
+  },
+  "header": { "updated": "{{s}} san. əvvəl yenilənib", "refresh": "Məlumatı yenilə", "theme": "Açıq və ya tünd mövzunu dəyiş" },
+  "menu": { "account": "Hesab menyusu", "signOut": "Çıxış" },
+  "role": { "super_admin": "Super admin", "operations": "Əməliyyatlar", "analyst": "Analitik" },
+  "search": { "label": "İstifadəçi, restoran, yemək, rəy və qəbz axtar", "placeholder": "Axtar", "none": "Nəticə yoxdur" },
+  "range": {
+    "label": "Tarix aralığı", "from": "Başlanğıc tarixi", "to": "Son tarix", "today": "Bu gün", "yesterday": "Dünən",
+    "7d": "Son 7 gün", "30d": "Son 30 gün", "90d": "Son 90 gün", "month": "Bu ay", "prevMonth": "Keçən ay", "all": "Bütün dövr", "custom": "Fərdi"
+  },
+  "status": {
+    "reload": "Yenidən yüklə",
+    "expired": { "title": "Sessiyanın vaxtı bitib — yenidən daxil olmaq üçün səhifəni yeniləyin", "body": "Admin sessiyası başa çatıb. Giriş qapısından yenidən daxil olmaq üçün səhifəni yeniləyin." },
+    "forbidden": { "title": "Bu bölməyə icazəniz yoxdur", "body": "Rolunuzda bu icazə yoxdur. Lazım olarsa super admindən xahiş edin." },
+    "disabled": { "title": "Admin söndürülüb", "body": "Admin API söndürülüb. Yenidən aktiv edilənə qədər heç nə yüklənə bilməz." },
+    "notFound": { "title": "Tapılmadı", "body": "Bu səhifə və ya qeyd mövcud deyil." },
+    "schema": { "title": "Gözlənilməz cavab", "body": "Server bu tətbiqin anlamadığı formatda cavab verdi. Heç nə dəyişdirilməyib." },
+    "network": { "title": "Serverə qoşulmaq olmur", "body": "Bağlantını yoxlayın və yenidən cəhd edin." },
+    "generic": { "title": "Xəta baş verdi", "body": "Sorğu uğursuz oldu. Bir azdan yenidən cəhd edin." }
+  },
+  "overview": {
+    "activeUsers": "Aktiv istifadəçilər (DAU / WAU / MAU)", "active": "Aktiv istifadəçilər", "cumulative": "Ümumi istifadəçilər (sağ ox)",
+    "userGrowth": "İstifadəçi artımı", "activity": "Gündəlik qəbz və qiymətlər", "recent": "Son fəaliyyət", "topRestaurants": "Ən çox görünən restoranlar (Epsilon vasitəsilə)"
+  },
+  "activity": { "receipt": "Qəbz", "rating": "Qiymət", "signup": "Qeydiyyat", "cashback": "Keşbek" },
+  "users": {
+    "search": "İstifadəçi axtar", "user": "İstifadəçi", "unnamed": "Adsız istifadəçi", "contact": "Əlaqə (maskalanmış)", "joined": "Qoşulub",
+    "lastActive": "Son aktivlik", "notifications": "Bildirişlər", "reminders": "Xatırlatmalar", "cashbackUpdates": "Keşbek yenilikləri",
+    "partnerUpdates": "Tərəfdaş yenilikləri", "devices": "{{n}} cihaz", "reveal": "Əlaqəni göstər", "hideContact": "Gizlət",
+    "revealTitle": "Əlaqə məlumatını göstər", "revealBody": "Tam e-poçt və telefon bir dəfə göstərilir və bu əməliyyat səbəbinizlə birlikdə audit jurnalına yazılır.",
+    "preferences": "Bildiriş seçimləri", "pref": { "reminders": "Xatırlatmalar", "cashbackUpdates": "Keşbek yenilikləri", "partnerUpdates": "Tərəfdaş yenilikləri" }
+  },
+  "userStatus": { "active": "Aktiv", "disabled": "Deaktiv", "deleted": "Silinib" },
+  "restaurants": {
+    "intro": "Qəbzlərdə görünən bütün mağazalar, tərəfdaş olsun-olmasın. Rəqəmlər Epsilon vasitəsilə müşahidə olunandır, restoranın gəliri deyil.",
+    "search": "Restoran axtar", "partnership": "Tərəfdaşlıq", "partnersOnly": "Yalnız tərəfdaşlar", "nonPartners": "Tərəfdaş olmayanlar", "nonPartner": "Tərəfdaş deyil",
+    "reviewers": "Rəy verənlər", "lastActivity": "Son fəaliyyət", "observed": "Epsilon vasitəsilə müşahidə olunub", "trend": "Zamanla qiymətlər",
+    "dishes": "Yeməklər", "best": "Ən yaxşı yeməklər", "attention": "Diqqət tələb edir", "noAttention": "Diqqət tələb edən heç nə yoxdur",
+    "dimensions": "Ölçülər üzrə rəylər"
+  },
+  "dishes": {
+    "search": "Yemək axtar", "dish": "Yemək", "purchases": "Müşahidə", "sample": "Qiymətlər (n)", "lastRated": "Son qiymət", "sort": "Sıralama",
+    "sortBest": "Ən yüksək qiymət", "sortWorst": "Ən aşağı qiymət", "sortReviewed": "Ən çox rəy", "sortObserved": "Ən çox müşahidə", "minRatings": "Min. qiymət sayı"
+  },
+  "dimension": { "food": "Yemək", "service": "Xidmət", "speed": "Sürət", "price": "Qiymət", "ambience": "Mühit" },
+  "quick": { "tasty": "Dadlı", "fresh": "Təzə", "friendly": "Mehriban personal", "slow": "Yavaş", "cold": "Soyuq verildi", "pricey": "Bahalı" },
+  "reviews": {
+    "stars": "Ulduz", "hasComment": "Şərh var", "edited": "Redaktə edilib", "moderated": "Moderasiya", "dimension": "Ölçü", "sentiment": "Tonallıq",
+    "comment": "Rəy", "hidden": "Gizlədilib", "none": "Rəy yoxdur", "detail": "Rəyin təfsilatı", "hide": "Rəyi gizlət", "unhide": "Rəyi göstər",
+    "hideTitle": "Bu rəy gizlədilsin?", "unhideTitle": "Bu rəy yenidən göstərilsin?",
+    "moderateBody": "Gizlədilmiş rəylər qiymətlərə və ictimai siyahılara daxil edilmir. Mətn heç vaxt dəyişdirilmir və əməliyyat geri qaytarıla bilər. Bu addım audit jurnalına yazılır."
+  },
+  "receipts": {
+    "fiscalId": "Fiskal ID (maskalanmış)", "imported": "İdxal edilib", "total": "Cəmi", "items": "Mövqe", "engine": "Provayder / mühərrik", "health": "İdxalın vəziyyəti",
+    "unsupported": "Dəstəklənməyən", "unknownMerchant": "Naməlum mağaza", "failures": "Uğursuzluqlar", "byProvider": "Provayderə görə", "byEngine": "Mühərrikə görə",
+    "lines": "Qəbz sətirləri", "originalNames": "Adlar qəbzdə çap olunduğu kimidir.", "lineName": "Orijinal ad", "qty": "Say", "price": "Qiymət", "relatedReviews": "Əlaqəli rəylər"
+  },
+  "receiptStatus": { "ok": "İdxal edilib", "processed": "Emal edilib", "failed": "Uğursuz", "unsupported": "Dəstəklənmir" },
+  "cashback": {
+    "confirmed": "Təsdiqlənib", "pending": "Gözləmədə", "reversed": "Geri qaytarılıb", "expired": "Vaxtı keçib", "liability": "Ödənilməmiş öhdəlik",
+    "byDay": "Gündəlik keşbek", "byRestaurant": "Restoran üzrə", "ledger": "Mühasibat kitabı"
+  },
+  "ledger": { "confirmed": "Təsdiqlənib", "pending": "Gözləmədə", "reversed": "Geri qaytarılıb", "expired": "Vaxtı keçib", "earned": "Qazanılıb", "spent": "Xərclənib" },
+  "notifications": {
+    "sent": "Göndərilib", "readCount": "Oxunub", "read": "Oxunub", "unread": "Oxunmayıb", "devices": "Push cihazları", "delivery": "Çatdırılma",
+    "optIns": "Kateqoriya üzrə razılıqlar", "byKind": "Növə görə", "history": "Tarixçə"
+  },
+  "kind": { "reminder": "Xatırlatma", "cashback": "Keşbek", "partner": "Tərəfdaş" },
+  "product": {
+    "registrations": "Qeydiyyatlar", "active": "Aktiv istifadəçilər", "cohorts": "Kohortlar", "funnels": "Hunilər", "retention": "Saxlanma",
+    "eventsNotStarted": "Hələ izlənmir — hadisələrin toplanmasına başlanmayıb."
+  },
+  "health": { "api": "API", "up": "İşləyir", "uptime": "iş vaxtı", "db": "Verilənlər bazası", "ok": "Sağlam", "down": "Əlçatmaz", "mealReminders": "Yemək xatırlatmaları işi", "lastRun": "Son işə düşmə" },
+  "costs": {
+    "estimates": "Bütün xərc rəqəmləri sorğu sayına əsaslanan təxminlərdir, hesab-faktura deyil.", "estimate": "Təxmin", "geminiCalls": "Gemini sorğuları",
+    "geminiEstimate": "Gemini xərci (təxmin)", "geminiByDay": "Gündəlik Gemini sorğuları", "email": "E-poçt", "push": "Push"
+  },
+  "reports": {
+    "note": "İxraclar audit olunur: kim, nəyi və nə vaxt ixrac etdiyi qeyd edilir. Hər fayl 50 000 sətirlə məhdudlaşır və yuxarıda seçilmiş tarix aralığını istifadə edir.",
+    "exportCsv": "CSV ixrac et", "confirmTitle": "Bu hesabat ixrac edilsin?",
+    "confirmBody": "{{report}}, {{range}}. Bu ixrac audit jurnalına yazılır.",
+    "names": { "users": "İstifadəçilər", "restaurants": "Restoranlar", "dishes": "Yeməklər", "reviews": "Rəylər", "receipts": "Qəbzlər", "cashback": "Keşbek kitabı", "notifications": "Bildirişlər" },
+    "desc": {
+      "users": "Maskalanmış əlaqə məlumatı ilə hesablar.", "restaurants": "Qəbz, qiymət və ortalamalarla mağazalar.", "dishes": "Nümunə ölçüsü ilə yemək reytinqi.",
+      "reviews": "Qiymətlər, sürətli şərhlər və rəylər.", "receipts": "Provayder və status ilə idxal olunmuş qəbzlər.", "cashback": "Status üzrə bütün kitab qeydləri.", "notifications": "Növ üzrə bildiriş tarixçəsi."
+    }
+  },
+  "outcome": { "success": "Uğurlu", "ok": "Uğurlu", "denied": "Rədd edilib", "failed": "Uğursuz" },
+  "audit": { "admin": "Admin", "action": "Əməliyyat", "entity": "Obyekt", "outcome": "Nəticə" },
+  "settings": {
+    "appearance": "Görünüş", "theme": "Mövzu", "system": "Sistemə uyğun", "light": "Açıq", "dark": "Tünd", "language": "Dil",
+    "lang": { "en": "English", "az": "Azərbaycan dili" }, "session": "Sessiya", "name": "Ad", "email": "E-poçt", "role": "Rol", "permissions": "İcazələr",
+    "sessionNote": "Sessiya 30 dəqiqə hərəkətsizlikdən və ya cəmi 8 saatdan sonra başa çatır. Giriş giriş qapısı tərəfindən idarə olunur."
+  },
+  "metricNames": {
+    "totalUsers": "Ümumi istifadəçilər", "newUsers": "Yeni istifadəçilər", "activeUser": "Aktiv istifadəçilər", "receiptsImported": "İdxal olunmuş qəbzlər", "uniqueRestaurants": "Unikal restoranlar",
+    "ratings": "Qiymətlər", "avgRating": "Orta qiymət", "cashbackConfirmedMinor": "Təsdiqlənmiş keşbek", "receiptToRatingRate": "Qəbzdən qiymətə keçid",
+    "returningUserPct": "Qayıdan istifadəçilər", "avgRatingsPerReceipt": "Qəbz başına qiymət", "activePartners": "Aktiv tərəfdaşlar",
+    "receipts": "Qəbzlər", "reviewers": "Rəy verənlər", "purchases": "Müşahidə olunan alışlar", "positivePct": "Müsbət", "negativePct": "Mənfi",
+    "observedValueMinor": "Müşahidə olunan alış dəyəri", "avgReceiptsPerUser": "İstifadəçi başına qəbz", "avgRatingsPerUser": "İstifadəçi başına qiymət",
+    "neverScanned": "Heç vaxt qəbz skan etməyib", "scannedNeverRated": "Skan edib, qiymətləndirməyib", "ratedNonPartner": "Tərəfdaş olmayanlara qiymət", "notificationOptInRate": "Bildirişə razılıq nisbəti"
+  },
+  "metrics": {
+    "totalUsers": "Silinməmiş istifadəçi qeydləri.",
+    "newUsers": "Seçilmiş aralıqda yaradılmış istifadəçilər.",
+    "activeUser": "Həmin Bakı günü daxil olan və ya sessiyanı yeniləyən, qəbz əlavə edən, rəy göndərən və ya redaktə edən istifadəçi. DAU, WAU və MAU aralığın sonunda bitən son 1, 7 və 30 günü əhatə edir.",
+    "receiptsImported": "Hər alış bir dəfə sayılmaqla əlavə edilmiş alışlar. Unikal fiskal qəbzlər ayrıca sayılır.",
+    "uniqueRestaurants": "Ən azı bir idxal olunmuş qəbzi olan fərqli mağaza açarları.",
+    "ratings": "Rəy qeydləri. Redaktə yeni qiymət əlavə etmir. Gizlədilmiş (moderasiya olunmuş) rəylər daxil deyil.",
+    "avgRating": "Aralıqdakı cari qiymətlərin ortası.",
+    "receiptToRatingRate": "Ən azı bir qiyməti olan idxal olunmuş qəbzlər bölünsün idxal olunmuş qəbzlərə.",
+    "returningUserPct": "Aralıqda ən azı iki fərqli aktiv günü olan istifadəçilər bölünsün aktiv istifadəçilərə.",
+    "avgRatingsPerReceipt": "Qiymətlər bölünsün idxal olunmuş qəbzlərə.",
+    "activePartners": "Aralıqda fəaliyyəti olan tərəfdaş restoranlar.",
+    "cashbackConfirmedMinor": "Növü qazanılmış, statusu təsdiqlənmiş kitab qeydləri. Demo və test məlumatı daxil deyil.",
+    "cashbackConfirmed": "Növü qazanılmış, statusu təsdiqlənmiş kitab qeydləri. Demo və test məlumatı daxil deyil.",
+    "cashbackPending": "Hələ təsdiqlənməmiş qazanılmış keşbek.",
+    "cashbackReversed": "Qazanıldıqdan sonra geri alınmış keşbek.",
+    "cashbackExpired": "İstifadə olunmadan vaxtı keçmiş keşbek.",
+    "cashbackLiability": "Hələ xərclənməmiş və vaxtı keçməmiş təsdiqlənmiş keşbek.",
+    "observed": "Epsilon vasitəsilə görünən qəbz məbləğlərinin cəmi. Bu, müşahidə olunan alış dəyəridir, restoranın gəliri deyil.",
+    "observedValueMinor": "Epsilon vasitəsilə görünən qəbz məbləğlərinin cəmi. Bu, müşahidə olunan alış dəyəridir, restoranın gəliri deyil.",
+    "receipts": "Bu mağaza üçün idxal olunmuş qəbzlər, hər alış bir dəfə sayılır.",
+    "reviewers": "Bu mağazanı qiymətləndirmiş fərqli istifadəçilər.",
+    "purchases": "Bu yeməyin idxal olunmuş qəbzlərdə görünmə sayı.",
+    "positivePct": "Müsbət rəyi olan qiymətlərin payı.",
+    "negativePct": "Mənfi rəyi olan qiymətlərin payı.",
+    "minSample": "Reytinqlərə yalnız minimum qiymət sayına çatmış mövqelər daxildir. Nümunə ölçüsü həmişə göstərilir.",
+    "dimensions": "Hər rəy ölçüsü üzrə müsbət, neytral və mənfi sürətli şərhlərin payı.",
+    "avgReceiptsPerUser": "İdxal olunmuş qəbzlər bölünsün istifadəçilərə.",
+    "avgRatingsPerUser": "Qiymətlər bölünsün istifadəçilərə.",
+    "neverScanned": "İdxal olunmuş qəbzi olmayan istifadəçilər.",
+    "scannedNeverRated": "Ən azı bir qəbzi və heç bir qiyməti olmayan istifadəçilər.",
+    "ratedNonPartner": "Epsilon tərəfdaşı olmayan mağazalara verilmiş qiymətlər.",
+    "notificationOptInRate": "Ən azı bir bildiriş kateqoriyası açıq olan istifadəçilər.",
+    "notifSent": "Aralıqda yaradılmış bildirişlər.",
+    "notifRead": "İstifadəçi tərəfindən açılmış bildirişlər.",
+    "pushDevices": "Qeydiyyatdan keçmiş push cihazları. Çatdırılma hələ izlənmir.",
+    "optIn": "Hər kateqoriyanı açıq saxlayan istifadəçilər.",
+    "geminiCalls": "Gemini modelinə qəbzi oxumaq üçün sorğular.",
+    "geminiEstimate": "Sorğu sayı və göstərilən əsas üzrə təxmin edilib. Hesab-faktura deyil."
+  }
+}

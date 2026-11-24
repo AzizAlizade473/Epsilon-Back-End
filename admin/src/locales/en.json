@@ -1,0 +1,163 @@
+{
+  "common": {
+    "all": "All", "any": "Any", "yes": "Yes", "no": "No", "on": "On", "off": "Off",
+    "amount": "Amount", "avgRating": "Avg rating", "cancel": "Cancel", "category": "Category", "close": "Close",
+    "date": "Date", "days": "days", "definition": "Definition", "details": "Details", "loading": "Loading",
+    "negative": "Negative", "neutral": "Neutral", "positive": "Positive", "next": "Next", "previous": "Previous",
+    "noData": "No data for this selection", "notTracked": "Not tracked yet",
+    "notTrackedLong": "Not tracked yet. Event collection has not started.",
+    "page": "Page {{n}}", "pagination": "Pagination", "partner": "Partner",
+    "ratingDistribution": "Rating distribution", "ratings": "Ratings", "reason": "Reason (required)",
+    "receipts": "Receipts", "retry": "Try again", "sampleData": "Sample data", "skip": "Skip to content",
+    "starsOf": "{{value}} out of 5 stars", "status": "Status", "title": "Title", "total": "total", "type": "Type",
+    "updated": "Updated", "viewChart": "View chart", "viewTable": "View as table", "vsPrevious": "versus previous period",
+    "up": "Up", "down": "Down", "flat": "Unchanged"
+  },
+  "nav": {
+    "label": "Main navigation", "open": "Open navigation", "collapse": "Collapse sidebar", "expand": "Expand sidebar",
+    "section": { "overview": "Overview", "customers": "Customers", "ecosystem": "Ecosystem", "money": "Money", "engagement": "Engagement", "operations": "Operations", "admin": "Admin" },
+    "overview": "Overview", "users": "Users", "restaurants": "Restaurants", "dishes": "Dishes", "reviews": "Reviews",
+    "receipts": "Receipts", "cashback": "Cashback", "notifications": "Notifications", "product": "Product analytics",
+    "health": "System health", "costs": "Costs", "reports": "Reports and exports", "audit": "Audit log", "settings": "Settings"
+  },
+  "header": { "updated": "Updated {{s}} s ago", "refresh": "Refresh data", "theme": "Toggle light or dark theme" },
+  "menu": { "account": "Account menu", "signOut": "Sign out" },
+  "role": { "super_admin": "Super admin", "operations": "Operations", "analyst": "Analyst" },
+  "search": { "label": "Search users, restaurants, dishes, reviews and receipts", "placeholder": "Search", "none": "No results" },
+  "range": {
+    "label": "Date range", "from": "From date", "to": "To date", "today": "Today", "yesterday": "Yesterday",
+    "7d": "Last 7 days", "30d": "Last 30 days", "90d": "Last 90 days", "month": "This month", "prevMonth": "Previous month", "all": "All time", "custom": "Custom"
+  },
+  "status": {
+    "reload": "Reload",
+    "expired": { "title": "Session expired — reload to sign in again", "body": "Your admin session has ended. Reload the page to sign in through the gateway." },
+    "forbidden": { "title": "You don't have access to this", "body": "Your role does not include this permission. Ask a super admin if you need it." },
+    "disabled": { "title": "Admin is disabled", "body": "The admin API is switched off. Nothing can be loaded until it is re-enabled." },
+    "notFound": { "title": "Not found", "body": "This page or record does not exist." },
+    "schema": { "title": "Unexpected response", "body": "The server answered in a shape this app does not understand. Nothing was changed." },
+    "network": { "title": "Can't reach the server", "body": "Check your connection and try again." },
+    "generic": { "title": "Something went wrong", "body": "The request failed. Try again in a moment." }
+  },
+  "overview": {
+    "activeUsers": "Active users (DAU / WAU / MAU)", "active": "Active users", "cumulative": "Total users (right axis)",
+    "userGrowth": "User growth", "activity": "Receipts and ratings per day", "recent": "Recent activity", "topRestaurants": "Top restaurants (observed through Epsilon)"
+  },
+  "activity": { "receipt": "Receipt", "rating": "Rating", "signup": "Sign-up", "cashback": "Cashback" },
+  "users": {
+    "search": "Search users", "user": "User", "unnamed": "Unnamed user", "contact": "Contact (masked)", "joined": "Joined",
+    "lastActive": "Last active", "notifications": "Notifications", "reminders": "Reminders", "cashbackUpdates": "Cashback updates",
+    "partnerUpdates": "Partner updates", "devices": "{{n}} devices", "reveal": "Reveal contact", "hideContact": "Hide",
+    "revealTitle": "Reveal contact details", "revealBody": "Full email and phone are shown once and this action is recorded in the audit log with your reason.",
+    "preferences": "Notification preferences", "pref": { "reminders": "Reminders", "cashbackUpdates": "Cashback updates", "partnerUpdates": "Partner updates" }
+  },
+  "userStatus": { "active": "Active", "disabled": "Disabled", "deleted": "Deleted" },
+  "restaurants": {
+    "intro": "Every merchant seen on receipts, partner or not. Figures are observed through Epsilon, not restaurant revenue.",
+    "search": "Search restaurants", "partnership": "Partnership", "partnersOnly": "Partners only", "nonPartners": "Non-partners", "nonPartner": "Not a partner",
+    "reviewers": "Reviewers", "lastActivity": "Last activity", "observed": "Observed through Epsilon", "trend": "Ratings over time",
+    "dishes": "Dishes", "best": "Best dishes", "attention": "Needs attention", "noAttention": "Nothing needs attention",
+    "dimensions": "Feedback by dimension"
+  },
+  "dishes": {
+    "search": "Search dishes", "dish": "Dish", "purchases": "Observed", "sample": "Ratings (n)", "lastRated": "Last rated", "sort": "Sort by",
+    "sortBest": "Best rated", "sortWorst": "Worst rated", "sortReviewed": "Most reviewed", "sortObserved": "Most observed", "minRatings": "Min. ratings"
+  },
+  "dimension": { "food": "Food", "service": "Service", "speed": "Speed", "price": "Price", "ambience": "Ambience" },
+  "quick": { "tasty": "Tasty", "fresh": "Fresh", "friendly": "Friendly staff", "slow": "Slow", "cold": "Served cold", "pricey": "Pricey" },
+  "reviews": {
+    "stars": "Stars", "hasComment": "Has comment", "edited": "Edited", "moderated": "Moderated", "dimension": "Dimension", "sentiment": "Sentiment",
+    "comment": "Feedback", "hidden": "Hidden", "none": "No reviews", "detail": "Review details", "hide": "Hide review", "unhide": "Unhide review",
+    "hideTitle": "Hide this review?", "unhideTitle": "Unhide this review?",
+    "moderateBody": "Hidden reviews are excluded from ratings and public lists. The text is never changed and this can be reversed. The action is recorded in the audit log."
+  },
+  "receipts": {
+    "fiscalId": "Fiscal ID (masked)", "imported": "Imported", "total": "Total", "items": "Items", "engine": "Provider / engine", "health": "Import health",
+    "unsupported": "Unsupported", "unknownMerchant": "Unknown merchant", "failures": "Failures", "byProvider": "By provider", "byEngine": "By engine",
+    "lines": "Line items", "originalNames": "Names exactly as printed on the receipt.", "lineName": "Original name", "qty": "Qty", "price": "Price", "relatedReviews": "Related reviews"
+  },
+  "receiptStatus": { "ok": "Imported", "processed": "Processed", "failed": "Failed", "unsupported": "Unsupported" },
+  "cashback": {
+    "confirmed": "Confirmed", "pending": "Pending", "reversed": "Reversed", "expired": "Expired", "liability": "Outstanding liability",
+    "byDay": "Cashback per day", "byRestaurant": "By restaurant", "ledger": "Ledger"
+  },
+  "ledger": { "confirmed": "Confirmed", "pending": "Pending", "reversed": "Reversed", "expired": "Expired", "earned": "Earned", "spent": "Spent" },
+  "notifications": {
+    "sent": "Sent", "readCount": "Read", "read": "Read", "unread": "Unread", "devices": "Push devices", "delivery": "Delivery",
+    "optIns": "Opt-ins by category", "byKind": "By kind", "history": "History"
+  },
+  "kind": { "reminder": "Reminder", "cashback": "Cashback", "partner": "Partner" },
+  "product": {
+    "registrations": "Registrations", "active": "Active users", "cohorts": "Cohorts", "funnels": "Funnels", "retention": "Retention",
+    "eventsNotStarted": "Not tracked yet — event collection not started."
+  },
+  "health": { "api": "API", "up": "Running", "uptime": "uptime", "db": "Database", "ok": "Healthy", "down": "Down", "mealReminders": "Meal reminders job", "lastRun": "Last run" },
+  "costs": {
+    "estimates": "All cost figures are estimates based on call counts, not invoices.", "estimate": "Estimate", "geminiCalls": "Gemini calls",
+    "geminiEstimate": "Gemini cost (estimate)", "geminiByDay": "Gemini calls per day", "email": "Email", "push": "Push"
+  },
+  "reports": {
+    "note": "Exports are audited: who, what and when are recorded. Each file is limited to 50 000 rows and uses the date range selected above.",
+    "exportCsv": "Export CSV", "confirmTitle": "Export this report?",
+    "confirmBody": "{{report}} for {{range}}. This export is recorded in the audit log.",
+    "names": { "users": "Users", "restaurants": "Restaurants", "dishes": "Dishes", "reviews": "Reviews", "receipts": "Receipts", "cashback": "Cashback ledger", "notifications": "Notifications" },
+    "desc": {
+      "users": "Accounts with masked contact details.", "restaurants": "Merchants with receipts, ratings and averages.", "dishes": "Dish ranking with sample sizes.",
+      "reviews": "Ratings, quick comments and comments.", "receipts": "Imported receipts with provider and status.", "cashback": "Every ledger entry by status.", "notifications": "Notification history by kind."
+    }
+  },
+  "outcome": { "success": "Success", "ok": "Success", "denied": "Denied", "failed": "Failed" },
+  "audit": { "admin": "Admin", "action": "Action", "entity": "Entity", "outcome": "Outcome" },
+  "settings": {
+    "appearance": "Appearance", "theme": "Theme", "system": "Match system", "light": "Light", "dark": "Dark", "language": "Language",
+    "lang": { "en": "English", "az": "Azərbaycan dili" }, "session": "Session", "name": "Name", "email": "Email", "role": "Role", "permissions": "Permissions",
+    "sessionNote": "Sessions end after 30 minutes of inactivity or 8 hours in total. Sign-in is handled by the access gateway."
+  },
+  "metricNames": {
+    "totalUsers": "Total users", "newUsers": "New users", "activeUser": "Active users", "receiptsImported": "Receipts imported", "uniqueRestaurants": "Unique restaurants",
+    "ratings": "Ratings", "avgRating": "Avg rating", "cashbackConfirmedMinor": "Cashback confirmed", "receiptToRatingRate": "Receipt to rating rate",
+    "returningUserPct": "Returning users", "avgRatingsPerReceipt": "Ratings per receipt", "activePartners": "Active partners",
+    "receipts": "Receipts", "reviewers": "Reviewers", "purchases": "Observed purchases", "positivePct": "Positive", "negativePct": "Negative",
+    "observedValueMinor": "Observed purchase value", "avgReceiptsPerUser": "Receipts per user", "avgRatingsPerUser": "Ratings per user",
+    "neverScanned": "Never scanned a receipt", "scannedNeverRated": "Scanned, never rated", "ratedNonPartner": "Rated at non-partners", "notificationOptInRate": "Notification opt-in rate"
+  },
+  "metrics": {
+    "totalUsers": "Users rows that are not deleted.",
+    "newUsers": "Users created in the selected range.",
+    "activeUser": "A user who, that Baku day, signed in or refreshed a session, claimed a receipt, or submitted or edited a review. DAU, WAU and MAU use the last 1, 7 and 30 days ending at the end of the range.",
+    "receiptsImported": "Claimed purchases, counted once per purchase. Unique fiscal receipts are counted separately.",
+    "uniqueRestaurants": "Distinct merchant keys with at least one imported receipt.",
+    "ratings": "Feedback rows. An edit does not add a rating. Hidden (moderated) reviews are excluded.",
+    "avgRating": "Mean of the current ratings in the range.",
+    "receiptToRatingRate": "Imported receipts with at least one rating divided by imported receipts.",
+    "returningUserPct": "Users with two or more distinct active days in the range divided by active users.",
+    "avgRatingsPerReceipt": "Ratings divided by imported receipts.",
+    "activePartners": "Partner restaurants with activity in the range.",
+    "cashbackConfirmedMinor": "Ledger entries of type earned with status confirmed. Demo and test data is excluded.",
+    "cashbackConfirmed": "Ledger entries of type earned with status confirmed. Demo and test data is excluded.",
+    "cashbackPending": "Earned cashback that is not confirmed yet.",
+    "cashbackReversed": "Cashback taken back after it was earned.",
+    "cashbackExpired": "Cashback that expired unused.",
+    "cashbackLiability": "Confirmed cashback not yet spent or expired.",
+    "observed": "Sum of receipt totals seen through Epsilon. This is observed purchase value, never restaurant revenue.",
+    "observedValueMinor": "Sum of receipt totals seen through Epsilon. This is observed purchase value, never restaurant revenue.",
+    "receipts": "Imported receipts for this merchant, counted once per purchase.",
+    "reviewers": "Distinct users who rated this merchant.",
+    "purchases": "Times this dish was seen on imported receipts.",
+    "positivePct": "Share of ratings with positive feedback.",
+    "negativePct": "Share of ratings with negative feedback.",
+    "minSample": "Rankings only include items with at least the minimum number of ratings. The sample size is always shown.",
+    "dimensions": "For each feedback dimension, the share of positive, neutral and negative quick comments.",
+    "avgReceiptsPerUser": "Imported receipts divided by users.",
+    "avgRatingsPerUser": "Ratings divided by users.",
+    "neverScanned": "Users with no imported receipt.",
+    "scannedNeverRated": "Users with at least one receipt and no rating.",
+    "ratedNonPartner": "Ratings given to merchants that are not Epsilon partners.",
+    "notificationOptInRate": "Users with at least one notification category enabled.",
+    "notifSent": "Notifications created in the range.",
+    "notifRead": "Notifications opened by the user.",
+    "pushDevices": "Registered push devices. Delivery is not tracked yet.",
+    "optIn": "Users who have each category switched on.",
+    "geminiCalls": "Receipt-reading calls to the Gemini model.",
+    "geminiEstimate": "Estimated from call counts and the stated basis. Not an invoice."
+  }
+}
