@@ -50,3 +50,9 @@ export function fmtDuration(totalSeconds: number): string {
   const m = Math.floor((totalSeconds % 3600) / 60);
   return [d && `${d}d`, (d || h) && `${h}h`, `${m}m`].filter(Boolean).join(' ');
 }
+
+/** Server business types are snake_case ids: show them as words (fast_food → Fast food). */
+export const categoryLabel = (id: string) => {
+  const words = id.replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+};

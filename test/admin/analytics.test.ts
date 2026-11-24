@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { adminAudit, authIdentities } from '../../src/db/schema.js';
+import { eq } from 'drizzle-orm';
+import { adminAudit, authIdentities, users } from '../../src/db/schema.js';
 import { csvCell, maskEmail, maskId, maskPhone } from '../../src/admin/mask.js';
 import { adminSetup, seed } from './helpers.js';
 
@@ -60,6 +61,14 @@ describe('admin analytics', async () => {
     expect(series.days.at(-1)).toMatchObject({ date: '2026-11-13', receipts: 2, ratings: 3, activeUsers: 2 });
     expect(topRestaurants.map((r: { key: string }) => r.key)).toContain(`r:${data.r1.id}`);
     expect(typeof res.body.generatedAt).toBe('string');
+  });
+
+  it('deleted accounts count neither as users nor as active users', async () => {
+    await t.db.update(users).set({ deletedAt: new Date('2026-11-13T09:00:00Z') }).where(eq(users.id, data.u2.id));
+    const { kpis } = (await analyst('GET', '/overview')).body;
+    expect(kpis.totalUsers).toBe(1);
+    expect(kpis.dau).toBeLessThanOrEqual(kpis.totalUsers);
+    expect(kpis.mau).toBe(1);
   });
 
   it('every analytics endpoint answers with valid SQL', async () => {

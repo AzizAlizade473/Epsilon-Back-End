@@ -7,6 +7,7 @@ import { Boundary } from '../components/data';
 import { KpiMap, PageHead } from '../components/page';
 import { ReviewFeed } from '../components/reviews';
 import { DishesTable } from '../components/tables';
+import { categoryLabel } from '../lib/format';
 import { Badge, Dimensions, Distribution, Empty, Panel, RestaurantCell } from '../components/ui';
 
 export function Component() {
@@ -24,7 +25,7 @@ export function Component() {
               lead={<RestaurantCell name={r.name} branch={r.branch} partner={r.isPartner} logoBrand={null} />}
               sub={
                 <>
-                  {[r.category, r.chain].filter(Boolean).join(' · ')} {!r.isPartner && <Badge>{t('restaurants.nonPartner')}</Badge>}
+                  {[r.category && categoryLabel(r.category), r.chain].filter(Boolean).join(' · ')} {!r.isPartner && <Badge>{t('restaurants.nonPartner')}</Badge>}
                   <br />
                   {t('restaurants.observed')}
                 </>

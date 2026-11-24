@@ -121,4 +121,6 @@ export const BASE = sql`with r as (${RECEIPTS}),
       select user_id, created_at as ts from sessions
       union all select user_id, claimed_at from r
       union all select user_id, created_at from f
-      union all select user_id, updated_at from f where updated_at is not null) a where ts is not null)`;
+      union all select user_id, updated_at from f where updated_at is not null) a
+    -- Deleted accounts are not active users (and are not counted in total users either).
+    where ts is not null and user_id in (select id from users where deleted_at is null))`;

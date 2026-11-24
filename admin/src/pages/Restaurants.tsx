@@ -5,7 +5,7 @@ import { restaurantsSchema } from '../api/schemas';
 import { Boundary, DataTable, Pager } from '../components/data';
 import { SearchField, SelectField, Toolbar, useDebounced } from '../components/page';
 import { Panel, RestaurantCell, Stars } from '../components/ui';
-import { fmtDateTime, fmtNum, fmtRating } from '../lib/format';
+import { fmtDateTime, fmtNum, fmtRating, categoryLabel } from '../lib/format';
 
 export function Component() {
   const { t } = useTranslation();
@@ -41,7 +41,7 @@ export function Component() {
                 href={(r) => `/restaurants/${encodeURIComponent(r.key)}`}
                 cols={[
                   { id: 'name', header: t('nav.restaurants'), cell: (r) => <RestaurantCell name={r.name} branch={r.branch} partner={r.isPartner} /> },
-                  { id: 'category', header: t('common.category'), hideSm: true, cell: (r) => r.category ?? '—' },
+                  { id: 'category', header: t('common.category'), hideSm: true, cell: (r) => (r.category ? categoryLabel(r.category) : '—') },
                   { id: 'receipts', header: t('common.receipts'), num: true, cell: (r) => fmtNum(r.receipts) },
                   { id: 'reviewers', header: t('restaurants.reviewers'), num: true, hideSm: true, cell: (r) => fmtNum(r.reviewers) },
                   { id: 'ratings', header: t('common.ratings'), num: true, cell: (r) => fmtNum(r.ratings) },
