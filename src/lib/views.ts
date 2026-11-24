@@ -89,7 +89,7 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
     .where(and(eq(purchases.id, purchaseId), eq(purchases.claimedBy, user.id)));
   if (!row) throw new ApiError(404, 'RECEIPT_NOT_FOUND', 'Receipt not found');
   const items = await conn
-    .select({ item: purchaseItems, rating: feedback.rating })
+    .select({ item: purchaseItems, rating: feedback.rating, feedbackId: feedback.id })
     .from(purchaseItems)
     .leftJoin(feedback, eq(feedback.purchaseItemId, purchaseItems.id))
     .where(eq(purchaseItems.purchaseId, purchaseId))
@@ -105,7 +105,7 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
     : (row.restaurant?.cashbackBps ?? 0);
   const rewardsOn = fiscal ? rules!.cashbackAllowed : rewardEligible(user, config);
   let hint = 0;
-  const itemViews = items.map(({ item, rating }) => {
+  const itemViews = items.map(({ item, rating, feedbackId }) => {
     const canRate = !expired && rating === null && (rules?.ratingAllowed ?? true);
     const line = doc && item.lineNo !== null ? doc.items.find((i) => i.lineNo === item.lineNo) : undefined;
     const lineClaimed = line ? claimed.has(line.lineNo) : false;
@@ -117,6 +117,7 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
       unitPriceMinor: item.unitPriceMinor,
       canRate,
       rating,
+      ...(feedbackId ? { feedbackId } : {}),
       ...(line
         ? {
             line: {

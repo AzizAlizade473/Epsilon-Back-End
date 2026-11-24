@@ -315,6 +315,8 @@ export const feedback = pgTable(
     rating: smallint('rating').notNull(),
     comment: text('comment'),
     createdAt: createdAt(),
+    /** Set when the author edits the review; createdAt keeps the original time. */
+    updatedAt: ts('updated_at'),
   },
   (t) => [
     // One feedback per purchased item, globally.

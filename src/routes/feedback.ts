@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, or } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, or, type SQL } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
@@ -19,22 +19,84 @@ import { rewardMinor } from '../lib/money.js';
 import { decodeTimeCursor, encodeCursor, pageQuery, parse } from '../lib/validation.js';
 import { loadUser, rewardEligible } from '../lib/views.js';
 import { claimLine, eligibility } from '../fiscal/service.js';
+import type { FiscalDocument } from '../fiscal/document.js';
+import { validReason } from '../lib/quick-comments.js';
+import type { Db, Tx } from '../db/client.js';
 
-/** Same list as the app's RatingForm reasonCodes. */
-export const REASON_CODES = ['taste', 'temperature', 'portion', 'price', 'presentation', 'wait_time'] as const;
-
+const opinion = {
+  rating: z.number().int().min(1).max(5),
+  comment: z.string().max(500).optional(),
+  // Quick comments belong to one star rating (checked below); legacy codes fit any.
+  reasonCodes: z
+    .array(z.string().max(40))
+    .max(6)
+    .refine((codes) => new Set(codes).size === codes.length, 'duplicate reason')
+    .optional(),
+};
+const matchingReasons = (body: { rating: number; reasonCodes?: string[] | undefined }, ctx: z.RefinementCtx) => {
+  for (const code of body.reasonCodes ?? [])
+    if (!validReason(code, body.rating))
+      ctx.addIssue({ code: 'custom', path: ['reasonCodes'], message: `reason ${code} does not fit rating ${body.rating}` });
+};
 const submitBody = z
-  .object({
-    receiptItemId: z.uuid(),
-    rating: z.number().int().min(1).max(5),
-    comment: z.string().max(500).optional(),
-    reasonCodes: z
-      .array(z.enum(REASON_CODES))
-      .max(3)
-      .refine((codes) => new Set(codes).size === codes.length, 'duplicate reason')
-      .optional(),
-  })
-  .strict();
+  .object({ receiptItemId: z.uuid(), ...opinion })
+  .strict()
+  .superRefine(matchingReasons);
+const editBody = z.object(opinion).strict().superRefine(matchingReasons);
+const idParam = z.object({ id: z.uuid() }).strict();
+
+/** The author's reviews with where they ate: partner restaurant, or the merchant on the fiscal receipt. */
+async function reviews(conn: Db | Tx, where: SQL | undefined, limit: number) {
+  const rows = await conn
+    .select({
+      id: feedback.id,
+      rating: feedback.rating,
+      comment: feedback.comment,
+      createdAt: feedback.createdAt,
+      updatedAt: feedback.updatedAt,
+      receiptItemId: purchaseItems.id,
+      receiptId: purchases.id,
+      dishName: purchaseItems.name,
+      restaurantName: restaurants.name,
+      restaurantLogoUrl: restaurants.logoUrl,
+      document: fiscalReceipts.document,
+    })
+    .from(feedback)
+    .innerJoin(purchaseItems, eq(purchaseItems.id, feedback.purchaseItemId))
+    .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
+    // Non-partner fiscal receipts have no branch or restaurant: keep them.
+    .leftJoin(branches, eq(branches.id, purchases.branchId))
+    .leftJoin(restaurants, eq(restaurants.id, branches.restaurantId))
+    .leftJoin(fiscalReceipts, eq(fiscalReceipts.id, purchases.fiscalReceiptId))
+    .where(where)
+    .orderBy(desc(feedback.createdAt), desc(feedback.id))
+    .limit(limit);
+  const codes = rows.length
+    ? await conn
+        .select({ feedbackId: feedbackReasons.feedbackId, code: feedbackReasons.code })
+        .from(feedbackReasons)
+        .where(inArray(feedbackReasons.feedbackId, rows.map((r) => r.id)))
+    : [];
+  return rows.map((r) => {
+    const merchant = (r.document as FiscalDocument | null)?.merchant;
+    return {
+      row: r,
+      view: {
+        feedbackId: r.id,
+        receiptId: r.receiptId,
+        receiptItemId: r.receiptItemId,
+        dishName: r.dishName,
+        restaurantName: r.restaurantName ?? merchant?.objectName ?? merchant?.displayName ?? 'Restaurant',
+        restaurantLogoUrl: r.restaurantLogoUrl ?? null,
+        rating: r.rating,
+        comment: r.comment,
+        reasonCodes: codes.filter((c) => c.feedbackId === r.id).map((c) => c.code),
+        createdAt: r.createdAt.toISOString(),
+        updatedAt: r.updatedAt?.toISOString() ?? null,
+      },
+    };
+  });
+}
 
 export async function feedbackRoutes(app: FastifyInstance, deps: Deps) {
   app.post('/feedback', { config: { auth: true } }, async (request, reply) => {
@@ -119,45 +181,52 @@ export async function feedbackRoutes(app: FastifyInstance, deps: Deps) {
     const query = parse(pageQuery, request.query);
     const after = decodeTimeCursor(query.cursor);
     const userId = request.auth!.userId;
-    const rows = await deps.db
-      .select({
-        id: feedback.id,
-        rating: feedback.rating,
-        comment: feedback.comment,
-        createdAt: feedback.createdAt,
-        dishName: purchaseItems.name,
-        restaurantName: restaurants.name,
-      })
-      .from(feedback)
-      .innerJoin(purchaseItems, eq(purchaseItems.id, feedback.purchaseItemId))
-      .innerJoin(purchases, eq(purchases.id, purchaseItems.purchaseId))
-      .innerJoin(branches, eq(branches.id, purchases.branchId))
-      .innerJoin(restaurants, eq(restaurants.id, branches.restaurantId))
-      .where(
-        and(
-          eq(feedback.userId, userId),
-          after
-            ? or(
-                lt(feedback.createdAt, after[0]),
-                and(eq(feedback.createdAt, after[0]), lt(feedback.id, after[1])),
-              )
-            : undefined,
-        ),
-      )
-      .orderBy(desc(feedback.createdAt), desc(feedback.id))
-      .limit(query.limit + 1);
+    const rows = await reviews(
+      deps.db,
+      and(
+        eq(feedback.userId, userId),
+        after
+          ? or(lt(feedback.createdAt, after[0]), and(eq(feedback.createdAt, after[0]), lt(feedback.id, after[1])))
+          : undefined,
+      ),
+      query.limit + 1,
+    );
     const page = rows.slice(0, query.limit);
-    const last = page.at(-1);
+    const last = page.at(-1)?.row;
     return {
-      items: page.map((r) => ({
-        feedbackId: r.id,
-        dishName: r.dishName,
-        restaurantName: r.restaurantName,
-        rating: r.rating,
-        comment: r.comment,
-        createdAt: r.createdAt.toISOString(),
-      })),
+      items: page.map((r) => r.view),
       nextCursor: rows.length > query.limit && last ? encodeCursor(last.createdAt.toISOString(), last.id) : null,
     };
+  });
+
+  app.get('/feedback/:id', { config: { auth: true } }, async (request) => {
+    const { id } = parse(idParam, request.params);
+    const [found] = await reviews(deps.db, and(eq(feedback.id, id), eq(feedback.userId, request.auth!.userId)), 1);
+    if (!found) throw new ApiError(404, 'FEEDBACK_NOT_FOUND', 'Review not found');
+    return found.view;
+  });
+
+  // Editing changes the opinion only: same review, same purchased item, no new reward.
+  app.patch('/feedback/:id', { config: { auth: true } }, async (request) => {
+    const { id } = parse(idParam, request.params);
+    const body = parse(editBody, request.body);
+    const userId = request.auth!.userId;
+    return deps.db.transaction(async (tx) => {
+      const [own] = await tx
+        .select({ id: feedback.id })
+        .from(feedback)
+        .where(and(eq(feedback.id, id), eq(feedback.userId, userId)))
+        .for('update');
+      if (!own) throw new ApiError(404, 'FEEDBACK_NOT_FOUND', 'Review not found');
+      await tx
+        .update(feedback)
+        .set({ rating: body.rating, comment: body.comment?.trim() || null, updatedAt: deps.now() })
+        .where(eq(feedback.id, id));
+      await tx.delete(feedbackReasons).where(eq(feedbackReasons.feedbackId, id));
+      if (body.reasonCodes?.length)
+        await tx.insert(feedbackReasons).values(body.reasonCodes.map((code) => ({ feedbackId: id, code })));
+      const [updated] = await reviews(tx, eq(feedback.id, id), 1);
+      return updated!.view;
+    });
   });
 }
