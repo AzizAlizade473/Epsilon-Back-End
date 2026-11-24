@@ -10,6 +10,7 @@ import { loadConfig } from '../src/config.js';
 import type { Db } from '../src/db/client.js';
 import * as schema from '../src/db/schema.js';
 import { ApiError } from '../src/errors.js';
+import type { PushMessage } from '../src/notifications/push.js';
 
 /** Fresh in-memory Postgres + app per test file. Clock and SMS are controllable. */
 export async function setup(
@@ -29,6 +30,13 @@ export async function setup(
   });
   const clock = { now: new Date('2026-11-13T10:00:00.000Z') };
   const sent: { phone: string; code: string; email?: string }[] = [];
+  const pushed: PushMessage[] = [];
+  /** Tokens the fake push service reports as DeviceNotRegistered. */
+  const deadTokens = new Set<string>();
+  const push: Deps['push'] = async (messages) => {
+    pushed.push(...messages);
+    return messages.map((m) => ({ to: m.to, ok: !deadTokens.has(m.to), unregistered: deadTokens.has(m.to) }));
+  };
   const googleAccounts = new Map<string, GoogleIdentity>();
 
   const app = await buildApp({
@@ -36,6 +44,7 @@ export async function setup(
     config,
     now: () => new Date(clock.now),
     ...extra,
+    push,
     sms: async (phone, code, email) => void sent.push({ phone, code, email }),
     google: async (idToken) => {
       const identity = googleAccounts.get(idToken);
@@ -65,5 +74,5 @@ export async function setup(
     return res.body;
   }
 
-  return { app, db, client, config, clock, advance, sent, googleAccounts, call, signInPhone };
+  return { app, db, client, config, clock, advance, sent, push, pushed, deadTokens, googleAccounts, call, signInPhone };
 }

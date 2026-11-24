@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'OTP_INVALID'
   | 'EMAIL_REQUIRED'
   | 'FEEDBACK_NOT_FOUND'
+  | 'NOTIFICATION_NOT_FOUND'
   | 'OTP_EXPIRED'
   | 'OTP_TOO_MANY'
   | 'PHONE_IN_USE'

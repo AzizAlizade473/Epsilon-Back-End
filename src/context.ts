@@ -5,12 +5,14 @@ import type { SmsSender } from './auth/sms.js';
 import type { SectorAdvisor } from './fiscal/classify.js';
 import type { FiscalProvider } from './fiscal/provider.js';
 import type { ReceiptImageReader } from './fiscal/gemini.js';
+import type { PushSender } from './notifications/push.js';
 
 export type Deps = {
   db: Db;
   config: Config;
   google: GoogleVerifier;
   sms: SmsSender;
+  push: PushSender;
   /** Injectable clock for tests. */
   now: () => Date;
   /** Fiscal receipt source and optional AI sector advisor; safe "unavailable"/"off" defaults. */

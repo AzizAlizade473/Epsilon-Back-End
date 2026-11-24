@@ -12,6 +12,7 @@ import {
   purchaseItems,
   purchases,
   restaurants,
+  users,
 } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { idempotent } from '../lib/idempotency.js';
@@ -22,6 +23,8 @@ import { claimLine, eligibility } from '../fiscal/service.js';
 import type { FiscalDocument } from '../fiscal/document.js';
 import { validReason } from '../lib/quick-comments.js';
 import type { Db, Tx } from '../db/client.js';
+import { cashbackCopy } from '../notifications/copy.js';
+import { notify } from '../notifications/notify.js';
 
 const opinion = {
   rating: z.number().int().min(1).max(5),
@@ -174,6 +177,20 @@ export async function feedbackRoutes(app: FastifyInstance, deps: Deps) {
         },
       };
     });
+    // After commit; replays hit the same dedupeKey, so they never notify twice.
+    const result = out.body as { feedbackId: string; reward: { status: string; amountMinor: number | null } };
+    if (out.status === 200 && result.reward.status === 'confirmed' && result.reward.amountMinor)
+      try {
+        const [me] = await deps.db.select({ language: users.language }).from(users).where(eq(users.id, auth.userId));
+        await notify(deps, auth.userId, {
+          kind: 'cashback',
+          ...cashbackCopy(me?.language ?? 'az', result.reward.amountMinor),
+          path: '/home',
+          dedupeKey: `cashback:${result.feedbackId}`,
+        });
+      } catch (error) {
+        request.log.warn({ err: error }, 'cashback notification failed');
+      }
     return reply.code(out.status).send(out.body);
   });
 

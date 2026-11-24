@@ -409,6 +409,7 @@ export const notificationPreferences = pgTable('notification_preferences', {
     .references(() => users.id, { onDelete: 'cascade' }),
   cashbackUpdates: boolean('cashback_updates').notNull().default(false),
   partnerUpdates: boolean('partner_updates').notNull().default(false),
+  reminders: boolean('reminders').notNull().default(true),
   updatedAt: ts('updated_at').notNull().defaultNow(),
 });
 
@@ -423,4 +424,28 @@ export const devices = pgTable(
     createdAt: createdAt(),
   },
   (t) => [uniqueIndex('devices_token_key').on(t.token)],
+);
+
+/** In-app inbox; a row exists whether or not the push was sent. */
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['cashback', 'meal_reminder', 'partner'] }).notNull(),
+    title: text('title').notNull(),
+    body: text('body').notNull(),
+    /** In-app deep link, e.g. /receipt/<id>. */
+    path: text('path'),
+    readAt: ts('read_at'),
+    createdAt: createdAt(),
+    /** One notification per event per user, e.g. cashback:<feedbackId>. */
+    dedupeKey: text('dedupe_key').notNull(),
+  },
+  (t) => [
+    uniqueIndex('notifications_user_dedupe_key').on(t.userId, t.dedupeKey),
+    index('notifications_user_created_idx').on(t.userId, t.createdAt),
+  ],
 );

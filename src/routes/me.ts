@@ -8,6 +8,7 @@ import {
   authIdentities,
   devices,
   notificationPreferences,
+  notifications,
   otpChallenges,
   sessions,
   users,
@@ -33,7 +34,7 @@ const profileBody = z
 const phoneBody = z.object({ phone: phoneSchema, email: emailSchema }).strict();
 const phoneVerifyBody = z.object({ phone: phoneSchema, code: otpCodeSchema }).strict();
 const preferencesBody = z
-  .object({ cashbackUpdates: z.boolean(), partnerUpdates: z.boolean() })
+  .object({ cashbackUpdates: z.boolean(), partnerUpdates: z.boolean(), reminders: z.boolean() })
   .strict();
 const deviceBody = z.object({ token: z.string().trim().min(1).max(512) }).strict();
 
@@ -78,6 +79,7 @@ export async function meRoutes(app: FastifyInstance, deps: Deps) {
       await tx.update(sessions).set({ revokedAt: now }).where(eq(sessions.userId, auth.userId));
       await tx.delete(authIdentities).where(eq(authIdentities.userId, auth.userId));
       await tx.delete(devices).where(eq(devices.userId, auth.userId));
+      await tx.delete(notifications).where(eq(notifications.userId, auth.userId));
       await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, auth.userId));
       // Sign-in challenges carry the phone (and e-mail) but no user id.
       await tx
@@ -154,7 +156,7 @@ export async function meRoutes(app: FastifyInstance, deps: Deps) {
       .select()
       .from(notificationPreferences)
       .where(eq(notificationPreferences.userId, request.auth!.userId));
-    return { cashbackUpdates: row?.cashbackUpdates ?? false, partnerUpdates: row?.partnerUpdates ?? false };
+    return { cashbackUpdates: row?.cashbackUpdates ?? false, partnerUpdates: row?.partnerUpdates ?? false, reminders: row?.reminders ?? true };
   });
 
   app.put('/me/notification-settings', authed, async (request, reply) => {

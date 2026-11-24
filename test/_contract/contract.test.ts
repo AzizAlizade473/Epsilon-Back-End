@@ -27,7 +27,7 @@ it('responses parse with the app schemas', { timeout: 120_000 }, async () => {
   const txs = c.paginatedSchema(c.walletTransactionSchema).parse(await g('/wallet/transactions'));
   c.walletTransactionSchema.parse(await g(`/wallet/transactions/${txs.items[0]!.id}`));
   c.notificationPreferencesSchema.parse(await g('/me/notification-settings'));
-  c.notificationPreferencesSchema.parse((await t.call('PUT', '/me/notification-settings', { token, body: { cashbackUpdates: true, partnerUpdates: false } })).body);
+  c.notificationPreferencesSchema.parse((await t.call('PUT', '/me/notification-settings', { token, body: { cashbackUpdates: true, partnerUpdates: false, reminders: true } })).body);
   expect((await t.call('POST', '/devices', { token, body: { token: 'ExponentPushToken[x]' } })).status).toBe(204);
   c.sessionSchema.parse((await t.call('POST', '/auth/refresh', { body: { refreshToken: auth.session.refreshToken } })).body);
   t.advance(61_000);
