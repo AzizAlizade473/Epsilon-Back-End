@@ -1,19 +1,19 @@
-import { and, desc, eq, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, lt, not, or, sql, type SQL } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { Deps } from '../context.js';
-import { purchases } from '../db/schema.js';
+import { branches, fiscalReceipts, purchaseItems, purchases, restaurants } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { sha256 } from '../lib/crypto.js';
 import { idempotent } from '../lib/idempotency.js';
-import { idParam, parse } from '../lib/validation.js';
-import { loadUser, receiptView } from '../lib/views.js';
+import { decodeTimeCursor, encodeCursor, idParam, likePattern, pageQuery, parse } from '../lib/validation.js';
+import { loadUser, receiptView, rewardEligible } from '../lib/views.js';
 import { noAdvisor } from '../fiscal/classify.js';
 import { unavailableProvider } from '../fiscal/provider.js';
 import { maskFiscalId, parseFiscalQr, QrError } from '../fiscal/qr.js';
 import { saveFailedImport } from '../fiscal/debug.js';
-import { importFiscalFromImage, obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
+import { IMAGE_PROVIDERS, importFiscalFromImage, obtainFiscalReceipt, userCopy } from '../fiscal/service.js';
 import { ImageReadError, type ReceiptImageReader } from '../fiscal/gemini.js';
 import { validateImage } from '../fiscal/image.js';
 import { ocrPageSchema } from '../fiscal/ocr.js';
@@ -52,6 +52,35 @@ const importBody = z
       .optional(),
   })
   .strict();
+
+const visitDay = z.iso.date().refine((d) => d >= '2000-01-01');
+const listQuery = pageQuery
+  .extend({
+    limit: z.coerce.number().int().min(1).max(50).default(50),
+    q: z.string().trim().min(1).max(80).refine((v) => !v.includes('\0')).optional(),
+    /** Visit (issue) days in Asia/Baku, both inclusive. */
+    from: visitDay.optional(),
+    to: visitDay.optional(),
+    partner: z.enum(['true', 'false']).optional(),
+    cashback: z.enum(['eligible', 'none']).optional(),
+  })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, { path: ['to'] });
+
+/** Restaurant, branch, fiscal number / id or dish name contains `q`. */
+function matchesText(q: string): SQL {
+  const p = likePattern(q);
+  return sql`(${restaurants.name} ilike ${p} or ${branches.name} ilike ${p} or ${fiscalReceipts.fiscalId} ilike ${p}
+    or ${fiscalReceipts.document}->'merchant'->>'displayName' ilike ${p} or ${fiscalReceipts.document}->'merchant'->>'objectName' ilike ${p}
+    or ${fiscalReceipts.document}->'receipt'->>'number' ilike ${p} or ${fiscalReceipts.document}->'receipt'->>'documentId' ilike ${p}
+    or exists (select 1 from ${purchaseItems} where ${purchaseItems.purchaseId} = ${purchases.id} and ${purchaseItems.name} ilike ${p}))`;
+}
+
+/** SQL form of the receipt view's cashback rule (fiscal/service.ts `eligibility`; partner codes: rate above zero).
+ * The phone-verification half depends only on the user and is applied by the caller. */
+const paysCashback = sql`(case when ${fiscalReceipts.id} is null then coalesce(${restaurants.cashbackBps}, 0) > 0
+  else ${fiscalReceipts.sector} = 'horeca' and ${fiscalReceipts.restaurantId} is not null
+    and coalesce((${fiscalReceipts.classificationEvidence}->>'cashbackBps')::int, 0) > 0
+    and ${fiscalReceipts.provider} not in (${sql.join(Object.values(IMAGE_PROVIDERS).map((v) => sql`${v}`), sql`, `)}) end)`;
 
 const disabledReader: ReceiptImageReader = {
   read: async () => {
@@ -149,13 +178,39 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
 
   /** This account's receipts, newest first (includes scanned fiscal receipts without cashback). */
   app.get('/receipts', { config: { auth: true } }, async (request) => {
+    const query = parse(listQuery, request.query);
+    const userId = request.auth!.userId;
+    const filters: (SQL | undefined)[] = [eq(purchases.claimedBy, userId), isNotNull(purchases.claimedAt)];
+    const after = decodeTimeCursor(query.cursor);
+    if (after)
+      filters.push(or(lt(purchases.claimedAt, after[0]), and(eq(purchases.claimedAt, after[0]), lt(purchases.id, after[1]))));
+    if (query.q) filters.push(matchesText(query.q));
+    const day = sql`(${purchases.issuedAt} at time zone 'Asia/Baku')::date`;
+    if (query.from) filters.push(sql`${day} >= ${query.from}::date`);
+    if (query.to) filters.push(sql`${day} <= ${query.to}::date`);
+    if (query.partner) {
+      const isPartner = sql`(${restaurants.id} is not null or ${fiscalReceipts.restaurantId} is not null)`;
+      filters.push(query.partner === 'true' ? isPartner : not(isPartner));
+    }
+    if (query.cashback) {
+      const eligible = rewardEligible(await loadUser(deps.db, userId), deps.config) ? paysCashback : sql`false`;
+      filters.push(query.cashback === 'eligible' ? eligible : not(eligible));
+    }
     const rows = await deps.db
-      .select({ id: purchases.id })
+      .select({ id: purchases.id, claimedAt: purchases.claimedAt })
       .from(purchases)
-      .where(and(eq(purchases.claimedBy, request.auth!.userId), isNotNull(purchases.claimedAt)))
-      .orderBy(desc(purchases.claimedAt))
-      .limit(50);
-    return { items: rows, nextCursor: null };
+      .leftJoin(branches, eq(branches.id, purchases.branchId))
+      .leftJoin(restaurants, eq(restaurants.id, branches.restaurantId))
+      .leftJoin(fiscalReceipts, eq(fiscalReceipts.id, purchases.fiscalReceiptId))
+      .where(and(...filters))
+      .orderBy(desc(purchases.claimedAt), desc(purchases.id))
+      .limit(query.limit + 1);
+    const page = rows.slice(0, query.limit);
+    const last = page.at(-1);
+    return {
+      items: page.map((r) => ({ id: r.id })),
+      nextCursor: rows.length > query.limit && last ? encodeCursor(last.claimedAt!.toISOString(), last.id) : null,
+    };
   });
 
   app.get('/receipts/:id', { config: { auth: true } }, async (request) => {

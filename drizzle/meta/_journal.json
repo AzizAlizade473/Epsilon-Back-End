@@ -50,6 +50,13 @@
       "when": 1795518880760,
       "tag": "0006_tense_johnny_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795681315668,
+      "tag": "0007_oval_king_bedlam",
+      "breakpoints": true
     }
   ]
 }

@@ -112,6 +112,10 @@ non-partner fiscal merchants (never merged by similar names).
 - `GET /reviews/:id` → review + receipt/dish context
 - `POST /reviews/:id/moderate` `{ hidden: boolean, reason }` (perm `reviews:moderate`, audited; reversible; hidden reviews are excluded from aggregates and from public lists; the text is never altered)
 
+### Likes
+- `GET /likes/stats?from&to` → `{ counts: { dish, review, restaurant }, top: { dish[], review[], restaurant[] } }` (top 10 with `count`; deleted accounts excluded)
+- `GET /likes?kind&from&to&cursor&limit` → items `{ id, kind, targetId, restaurantId, dishId, title, subtitle, createdAt, user (masked) }`; `GET /users/:id` adds `likes` counts
+
 ### Receipts
 - `GET /receipts?status&category&from&to&cursor&limit` → items `{ id, fiscalIdMasked, restaurant, category, importedAt, totalMinor, items, status, ratings, cashbackEligible, provider, engine }`
 - `GET /receipts/:id` → merchant, lines (original names, qty, price), engine, related reviews and ledger

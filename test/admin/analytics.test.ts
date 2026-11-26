@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { eq } from 'drizzle-orm';
-import { adminAudit, authIdentities, purchases, users } from '../../src/db/schema.js';
+import { eq, inArray } from 'drizzle-orm';
+import { adminAudit, authIdentities, likes, purchases, users } from '../../src/db/schema.js';
 import { csvCell, maskEmail, maskId, maskPhone } from '../../src/admin/mask.js';
 import * as S from '../../admin/src/api/schemas.js';
 import { FILTER_CASES } from '../../admin/src/lib/filters.js';
@@ -88,6 +88,7 @@ describe('admin analytics', async () => {
       '/users', '/users/analytics', `/users/${data.u1.id}`, '/restaurants', `/restaurants/r:${data.r1.id}`, '/restaurants/m:OBJ-1', '/dishes?minRatings=0',
       '/reviews', `/reviews/${data.fb1.id}`, '/receipts', `/receipts/${data.p1.id}`, '/receipts/health', '/cashback', '/cashback/ledger',
       '/notifications/stats', '/notifications', '/costs', '/health', '/search?q=lavash',
+      '/likes', '/likes/stats',
     ]) {
       const res = await analyst('GET', url);
       expect(res.status, `${url} ${res.text.slice(0, 300)}`).toBe(200);
@@ -108,7 +109,7 @@ describe('admin analytics', async () => {
       ['/dishes?minRatings=0', S.dishesSchema], [`/dishes/${dishKey}`, S.dishDetailSchema], ['/reviews', S.reviewsSchema], [`/reviews/${data.fb1.id}`, S.reviewDetailSchema],
       ['/receipts', S.receiptsSchema], [`/receipts/${data.p1.id}`, S.receiptDetailSchema], ['/receipts/health', S.receiptHealthSchema], ['/cashback', S.cashbackSchema],
       ['/cashback/ledger', S.ledgerSchema], ['/notifications/stats', S.notificationStatsSchema], ['/notifications', S.notificationsSchema], ['/costs', S.costsSchema],
-      ['/health', S.healthSchema], ['/search?q=lavash', S.searchSchema],
+      ['/health', S.healthSchema], ['/search?q=lavash', S.searchSchema], ['/likes', S.likesSchema], ['/likes/stats', S.likeStatsSchema],
     ];
     for (const [url, schema] of cases) {
       const res = await analyst('GET', url);
@@ -116,6 +117,43 @@ describe('admin analytics', async () => {
       expect(parsed.success, `${url}: ${JSON.stringify(parsed.error)?.slice(0, 400)}`).toBe(true);
     }
     await t.db.update(users).set({ firstName: 'Aziz', lastName: 'Aliyev' }).where(eq(users.id, data.u1.id));
+  });
+
+  it('likes: counts, top targets, masked users, pagination and user detail; deleted accounts excluded', async () => {
+    const like = (userId: string, kind: 'dish' | 'restaurant', targetId: string, title: string, at: string) => ({
+      userId, kind, targetId, restaurantId: 'r1', dishId: kind === 'dish' ? 'd1' : null, title, subtitle: '', createdAt: new Date(at),
+    });
+    const [other, gone] = await t.db.insert(users).values([{}, { deletedAt: new Date('2026-11-13T01:00:00Z') }]).returning();
+    await t.db.insert(likes).values([
+      like(data.u1.id, 'dish', 'r1:d1', 'Dolma', '2026-11-13T05:00:00Z'),
+      like(other!.id, 'dish', 'r1:d1', 'Dolma', '2026-11-13T06:00:00Z'),
+      like(data.u1.id, 'restaurant', 'r1', 'Dolma House', '2026-11-13T07:00:00Z'),
+      like(gone!.id, 'dish', 'r1:d1', 'Dolma', '2026-11-13T08:00:00Z'),
+    ]);
+    const stats = await analyst('GET', '/likes/stats');
+    expect(S.likeStatsSchema.safeParse(stats.body).success, stats.text).toBe(true);
+    expect(stats.body.counts).toEqual({ dish: 2, review: 0, restaurant: 1 });
+    expect(stats.body.top.dish).toEqual([expect.objectContaining({ targetId: 'r1:d1', title: 'Dolma', count: 2 })]);
+
+    const first = await analyst('GET', '/likes?limit=2');
+    expect(S.likesSchema.safeParse(first.body).success, first.text).toBe(true);
+    expect(first.body.items.map((i: { kind: string }) => i.kind)).toEqual(['restaurant', 'dish']);
+    const second = await analyst('GET', `/likes?limit=2&cursor=${first.body.nextCursor}`);
+    expect(second.body.items).toHaveLength(1);
+    expect(second.body.nextCursor).toBeNull();
+    expect(second.body.items[0].user).toMatchObject({ id: data.u1.id, emailMasked: 'a•••@gmail.com', phoneMasked: '+994 55 ••• •• 55' });
+    for (const res of [first, second]) {
+      expect(res.text).not.toContain('aziz.secret');
+      expect(res.text).not.toContain('551234555');
+    }
+    expect((await analyst('GET', '/likes?kind=nope')).status).toBe(422);
+
+    const detail = await analyst('GET', `/users/${data.u1.id}`);
+    expect(S.userDetailSchema.safeParse(detail.body).success).toBe(true);
+    expect(detail.body.likes).toEqual({ dish: 1, review: 0, restaurant: 1 });
+    expect((await t.call('GET', '/likes')).status).toBe(401);
+    // Later tests count users; the likes go with them (cascade).
+    await t.db.delete(users).where(inArray(users.id, [other!.id, gone!.id]));
   });
 
   it('every filter and sort value the pages offer is accepted by the API', async () => {

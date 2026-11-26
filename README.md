@@ -145,6 +145,7 @@ Two limits on the app side:
 | `POST /receipts/resolve` (partner code or e-kassa fiscal QR), `GET /receipts`, `GET /receipts/:id` | bearer |
 | `POST / GET /feedback`                                       | bearer |
 | `GET /wallet`, `/wallet/transactions`, `/wallet/transactions/:id` | bearer |
+| `PUT / DELETE /likes/:kind/:targetId`, `GET /likes`, `POST /likes/state` | bearer |
 
 Response shapes match `src/services/contracts/index.ts` in the app. Errors use
 `{"error":{"code","message","requestId"}}` and an `X-Request-Id` header.

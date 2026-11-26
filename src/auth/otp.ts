@@ -49,14 +49,27 @@ async function checkEmailQuota(deps: Deps, tx: Db | Tx, email: string, now: Date
   if ((day?.n ?? 0) >= deps.config.OTP_EMAIL_MAX_PER_DAY) throw new ApiError(429, 'RATE_LIMITED', 'Too many codes requested', 3600);
 }
 
-/** Creates a challenge and sends the code. The response is the same whether or
- * not the phone has an account (no enumeration). Rate-limited per phone. */
+/** Refuses a login for an unknown phone, or a registration for a known one, before any code exists.
+ * This tells the caller whether a phone has an account (product decision); the route's per-IP limit bounds probing. */
+async function checkIntent(tx: Db | Tx, phone: string, purpose: Purpose) {
+  if (purpose !== 'login' && purpose !== 'register') return;
+  const [account] = await tx
+    .select({ id: authIdentities.id })
+    .from(authIdentities)
+    .where(and(eq(authIdentities.provider, 'phone'), eq(authIdentities.providerUserId, phone)));
+  if (purpose === 'login' && !account) throw new ApiError(404, 'ACCOUNT_NOT_FOUND', 'No account');
+  if (purpose === 'register' && account) throw new ApiError(409, 'ACCOUNT_EXISTS', 'Account exists');
+}
+
+/** Creates a challenge and sends the code. Without a login/register intent the response is the
+ * same whether or not the phone has an account. Rate-limited per phone. */
 export async function createChallenge(
   deps: Deps,
   tx: Db | Tx,
   input: { phone: string; purpose: Purpose; userId?: string; email?: string },
 ): Promise<{ expiresAt: string; retryAfterSeconds: number; delivery?: 'email'; sentTo?: string }> {
   const now = deps.now();
+  await checkIntent(tx, input.phone, input.purpose);
   const email = deps.config.SMS_PROVIDER === 'gmail' ? await deliveryEmail(tx, input) : null;
   // Serialise challenge creation per phone so concurrent requests cannot skip the limits.
   await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${input.phone}))`);

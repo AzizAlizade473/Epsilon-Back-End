@@ -1,4 +1,4 @@
-import { Activity, BarChart3, Bell, FileDown, LayoutDashboard, Receipt, ScrollText, Settings, Star, Store, UtensilsCrossed, Users, Wallet, Coins, type LucideIcon } from 'lucide-react';
+import { Activity, BarChart3, Bell, FileDown, Heart, LayoutDashboard, Receipt, ScrollText, Settings, Star, Store, UtensilsCrossed, Users, Wallet, Coins, type LucideIcon } from 'lucide-react';
 
 export type NavItem = { to: string; key: string; icon: LucideIcon; perm?: string };
 export const NAV: { key: string; items: NavItem[] }[] = [
@@ -11,6 +11,7 @@ export const NAV: { key: string; items: NavItem[] }[] = [
       { to: '/dishes', key: 'dishes', icon: UtensilsCrossed },
       { to: '/reviews', key: 'reviews', icon: Star },
       { to: '/receipts', key: 'receipts', icon: Receipt },
+      { to: '/likes', key: 'likes', icon: Heart },
     ],
   },
   { key: 'money', items: [{ to: '/cashback', key: 'cashback', icon: Wallet }] },

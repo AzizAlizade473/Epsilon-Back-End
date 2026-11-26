@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { Db } from '../../db/client.js';
 import { ApiError } from '../../errors.js';
+import { likePattern } from '../../lib/validation.js';
 
 /** Every analytics query is parameterised `sql`; the only `sql.raw` inputs are constants in this module. */
 export async function all<T>(db: Db, query: SQL): Promise<T[]> {
@@ -66,7 +67,7 @@ export function paged<T>(rows: T[], limit: number, offset: number) {
   return { items: rows.slice(0, limit), nextCursor: rows.length > limit ? Buffer.from(String(offset + limit)).toString('base64url') : null };
 }
 
-export const like = (q: string) => `%${q.replace(/[\\%_]/g, '\\$&')}%`;
+export { likePattern as like };
 
 /** Sort keys map to fixed SQL; the client only picks a key. */
 export function orderBy(map: Record<string, string>, key: string | undefined, fallback: string): SQL {

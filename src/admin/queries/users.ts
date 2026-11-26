@@ -4,6 +4,7 @@ import { z } from 'zod';
 import type { Db } from '../../db/client.js';
 import { notFound } from '../../errors.js';
 import { maskEmail, maskPhone } from '../mask.js';
+import { likeCounts } from './likes.js';
 import { all, BASE, between, like, listQuery, offsetOf, one, orderBy, paged, rangeQuery, resolveRange } from './facts.js';
 import { reviewRows, reviewView } from './reviews.js';
 
@@ -72,7 +73,7 @@ export async function listUsers(ro: Db, q: z.infer<typeof usersQuery>, now: Date
 export async function userDetail(ro: Db, id: string) {
   const [u] = await userRows(ro, sql`u.id = ${id}::uuid`, sql`u.id`, 1, 0);
   if (!u) throw notFound();
-  const [receipts, reviews, ledger, notifications, prefs] = await Promise.all([
+  const [receipts, reviews, ledger, notifications, prefs, likes] = await Promise.all([
     all<{ id: string; claimed_at: Date; total_minor: number; status: string; mkey: string; mname: string; provider: string | null }>(
       ro,
       sql`${BASE} select id, claimed_at, total_minor, status, mkey, mname, provider from r where user_id = ${id}::uuid order by claimed_at desc limit 50`,
@@ -87,6 +88,7 @@ export async function userDetail(ro: Db, id: string) {
       sql`select id, kind::text, title, created_at, read_at from notifications where user_id = ${id}::uuid order by created_at desc limit 50`,
     ),
     one<{ reminders: boolean; cashback_updates: boolean; partner_updates: boolean }>(ro, sql`select reminders, cashback_updates, partner_updates from notification_preferences where user_id = ${id}::uuid`),
+    likeCounts(ro, sql`l.user_id = ${id}::uuid`),
   ]);
   const item = userItem(u);
   return {
@@ -95,6 +97,7 @@ export async function userDetail(ro: Db, id: string) {
     reviews: reviews.slice(0, 50).map(reviewView),
     ledger: ledger.map((l) => ({ id: l.id, type: l.type, status: l.status, amountMinor: l.amount_minor, createdAt: l.created_at, restaurantKey: l.mkey })),
     notifications: notifications.map((n) => ({ id: n.id, kind: n.kind, title: n.title, createdAt: n.created_at, read: n.read_at !== null })),
+    likes,
     preferences: { reminders: prefs?.reminders ?? true, cashbackUpdates: prefs?.cashback_updates ?? false, partnerUpdates: prefs?.partner_updates ?? false },
   };
 }

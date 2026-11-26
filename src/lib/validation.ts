@@ -62,3 +62,6 @@ export function decodeTimeCursor(cursor: string | undefined): [Date, string] | n
 
 /** Optional inbox for an e-mailed login code (SMS_PROVIDER=gmail); stored lower-case. */
 export const emailSchema = z.string().trim().toLowerCase().email().max(254).optional();
+
+/** `ILIKE` pattern matching `q` literally anywhere (wildcards escaped). */
+export const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, '\\$&')}%`;

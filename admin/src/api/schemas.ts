@@ -146,7 +146,16 @@ const user = z.looseObject({
 });
 export type UserRow = z.infer<typeof user>;
 export const usersSchema = list(user);
+const likeCounts = z.object({ dish: z.number(), review: z.number(), restaurant: z.number() });
+const likeTarget = z.looseObject({ kind: z.string(), targetId: z.string(), restaurantId: z.string(), dishId: str, title: z.string(), subtitle: str });
+const topLikes = z.array(likeTarget.extend({ count: z.number() }));
+export const likeStatsSchema = obj({ counts: likeCounts, top: z.object({ dish: topLikes, review: topLikes, restaurant: topLikes }) });
+export const likesSchema = list(
+  likeTarget.extend({ id, createdAt: z.string(), user: z.looseObject({ id, name: str, emailMasked: str, phoneMasked: str }) }),
+);
+
 export const userDetailSchema = obj({
+  likes: likeCounts,
   user,
   receipts: z.array(receiptItem),
   reviews: z.array(reviewSchema),

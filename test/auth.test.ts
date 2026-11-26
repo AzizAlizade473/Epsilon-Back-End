@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import { beforeEach, describe, expect, it } from 'vitest';
 
+import { authIdentities, otpChallenges, users } from '../src/db/schema.js';
 import { setup } from './helpers.js';
 
 let t: Awaited<ReturnType<typeof setup>>;
@@ -122,15 +123,43 @@ describe('phone OTP sign-in', () => {
     expect(extra.status).toBe(422);
   });
 
-  it('honours login / register intent without side effects', async () => {
-    await t.call('POST', '/auth/otp/request', { body: { phone: PHONE, intent: 'login' } });
-    const res = await t.call('POST', '/auth/otp/verify', {
-      body: { phone: PHONE, code: t.sent.at(-1)!.code, intent: 'login' },
-    });
+  it('refuses a login for an unknown phone before creating or sending a code', async () => {
+    const res = await t.call('POST', '/auth/otp/request', { body: { phone: PHONE, intent: 'login' } });
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe('ACCOUNT_NOT_FOUND');
-    const users = await t.db.execute(sql`select count(*)::int as n from users`);
-    expect(JSON.stringify(users)).toContain('"n":0');
+    expect(t.sent).toHaveLength(0);
+    expect(await t.db.select().from(otpChallenges)).toHaveLength(0);
+    expect(await t.db.select().from(users)).toHaveLength(0);
+    // The refusal does not start the resend cooldown: "Create account" works at once.
+    expect((await t.call('POST', '/auth/otp/request', { body: { phone: PHONE, intent: 'register' } })).status).toBe(200);
+  });
+
+  it('refuses a registration for an existing account without a new code; login still works', async () => {
+    await t.signInPhone(PHONE);
+    const res = await t.call('POST', '/auth/otp/request', { body: { phone: PHONE, intent: 'register' } });
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('ACCOUNT_EXISTS');
+    expect(t.sent).toHaveLength(1);
+    expect(await t.db.select().from(otpChallenges)).toHaveLength(1);
+    expect((await t.call('POST', '/auth/otp/request', { body: { phone: PHONE, intent: 'login' } })).status).toBe(200);
+    const login = await t.call('POST', '/auth/otp/verify', { body: { phone: PHONE, code: t.sent.at(-1)!.code, intent: 'login' } });
+    expect(login.status).toBe(200);
+  });
+
+  it('verify still enforces the intent when the account appears after the code was requested', async () => {
+    await t.call('POST', '/auth/otp/request', { body: { phone: PHONE, intent: 'register' } });
+    const [user] = await t.db.insert(users).values({ phone: PHONE }).returning();
+    await t.db.insert(authIdentities).values({ userId: user!.id, provider: 'phone', providerUserId: PHONE });
+    const res = await t.call('POST', '/auth/otp/verify', { body: { phone: PHONE, code: t.sent.at(-1)!.code, intent: 'register' } });
+    expect(res.body.error.code).toBe('ACCOUNT_EXISTS');
+  });
+
+  it('sends no mail for an unknown login with the e-mail provider', async () => {
+    const demo = await setup({ SMS_PROVIDER: 'gmail', GMAIL_USER: 'demo@example.com', GMAIL_APP_PASSWORD: 'abcdefghijklmnop' });
+    for (const body of [{ phone: PHONE, intent: 'login' }, { phone: PHONE, intent: 'login', email: 'a@example.com' }])
+      expect((await demo.call('POST', '/auth/otp/request', { body })).body.error.code).toBe('ACCOUNT_NOT_FOUND');
+    expect(demo.sent).toHaveLength(0);
+    expect(await demo.db.select().from(otpChallenges)).toHaveLength(0);
   });
 });
 

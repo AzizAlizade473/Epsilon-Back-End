@@ -389,6 +389,34 @@ export const ledgerEntries = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------- likes
+
+export const likeKind = pgEnum('like_kind', ['dish', 'review', 'restaurant']);
+
+/** The backend does not know every liked thing (demo catalogue), so each like keeps a display snapshot. */
+export const likes = pgTable(
+  'likes',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: likeKind('kind').notNull(),
+    targetId: text('target_id').notNull(),
+    restaurantId: text('restaurant_id').notNull(),
+    dishId: text('dish_id'),
+    title: text('title').notNull(),
+    subtitle: text('subtitle').notNull(),
+    imageUrl: text('image_url'),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('likes_user_target_key').on(t.userId, t.kind, t.targetId),
+    index('likes_target_idx').on(t.targetId, t.kind),
+    index('likes_user_created_idx').on(t.userId, t.createdAt),
+  ],
+);
+
 // ---------------------------------------------------------------- platform
 
 export const idempotencyKeys = pgTable(

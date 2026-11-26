@@ -12,6 +12,7 @@ import { PageHead } from '../components/page';
 import { ReviewFeed } from '../components/reviews';
 import { LedgerTable, NotificationsTable, ReceiptsTable, StatusBadge } from '../components/tables';
 import { Empty, Kpi, Panel } from '../components/ui';
+import { LIKE_KINDS } from '../lib/filters';
 import { fmtDateTime, fmtMoney, fmtNum } from '../lib/format';
 
 type Revealed = { email?: string | null; phone?: string | null };
@@ -85,6 +86,16 @@ export function Component() {
               <Kpi label={t('common.ratings')} value={fmtNum(u.ratings)} />
               <Kpi label={t('nav.cashback')} value={fmtMoney(u.cashbackMinor)} />
             </div>
+            <Panel title={t('nav.likes')}>
+              <dl className="kv">
+                {LIKE_KINDS.map((k) => (
+                  <div key={k}>
+                    <dt>{t(`likes.kind.${k}`)}</dt>
+                    <dd className="num">{fmtNum(d.likes[k])}</dd>
+                  </div>
+                ))}
+              </dl>
+            </Panel>
             <Panel title={t('nav.receipts')}>
               <ReceiptsTable items={d.receipts} />
             </Panel>

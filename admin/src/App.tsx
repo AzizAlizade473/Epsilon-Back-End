@@ -29,6 +29,7 @@ export const routes: RouteObject[] = [
       { path: 'reviews', ...page(() => import('./pages/Reviews')) },
       { path: 'receipts', ...page(() => import('./pages/Receipts')) },
       { path: 'receipts/:id', ...page(() => import('./pages/ReceiptDetail')) },
+      { path: 'likes', ...page(() => import('./pages/Likes')) },
       { path: 'cashback', ...page(() => import('./pages/Cashback')) },
       { path: 'notifications', ...page(() => import('./pages/Notifications')) },
       { path: 'product', ...page(() => import('./pages/Product')) },

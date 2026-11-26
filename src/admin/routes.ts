@@ -21,6 +21,7 @@ import { detailQuery, dishDetail, dishesQuery, dishParam, keyParam, listDishes, 
 import {
   auditQuery, costs, health, listAudit, listNotifications, notificationStats, notificationsQuery, search, searchQuery,
 } from './queries/misc.js';
+import { likesQuery, likeStats, listLikes } from './queries/likes.js';
 import { cashbackSummary, idParam, ledgerQuery, listLedger, listReceipts, receiptDetail, receiptHealth, receiptsQuery } from './queries/receipts.js';
 import { listReviews, reviewRows, reviewsQuery, reviewView } from './queries/reviews.js';
 import { overview } from './queries/overview.js';
@@ -221,6 +222,9 @@ export async function buildAdminApp(deps: AdminDeps, options: { logger?: boolean
 
   get('/notifications/stats', 'analytics:read', async (r) => analytic(await notificationStats(ro, resolveRange(parse(rangeQuery, r.query), now())), { delivery: 'not_tracked' }));
   get('/notifications', 'analytics:read', async (r) => listNotifications(ro, parse(notificationsQuery, r.query), now()));
+
+  get('/likes/stats', 'analytics:read', async (r) => analytic(await likeStats(ro, resolveRange(parse(rangeQuery, r.query), now()))));
+  get('/likes', 'analytics:read', async (r) => listLikes(ro, parse(likesQuery, r.query), now()));
 
   get('/costs', 'analytics:read', async (r) => analytic(await costs(ro, resolveRange(parse(rangeQuery, r.query), now())), { email: 'not_tracked', push: 'not_tracked' }));
   get('/health', 'analytics:read', async () => analytic(await health(ro, deps.version ?? 'unknown')));

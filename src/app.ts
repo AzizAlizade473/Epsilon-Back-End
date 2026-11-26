@@ -9,6 +9,7 @@ import { ApiError, apiErrorHandler } from './errors.js';
 import { authRoutes } from './routes/auth.js';
 import { catalogRoutes } from './routes/catalog.js';
 import { feedbackRoutes } from './routes/feedback.js';
+import { likeRoutes } from './routes/likes.js';
 import { meRoutes } from './routes/me.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { partnerRoutes } from './routes/partner.js';
@@ -28,6 +29,8 @@ export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
   const proxies = deps.config.TRUST_PROXY.split(',').map((s) => s.trim()).filter(Boolean);
   const app = Fastify({
     bodyLimit: 16 * 1024,
+    // Like target ids are up to 160 characters (router default is 100).
+    routerOptions: { maxParamLength: 200 },
     // request.ip (rate-limit key) is the real client only when the proxy in front is named.
     trustProxy: proxies.length ? proxies : false,
     // Never log bodies (phones, OTPs, comments) or auth headers.
@@ -85,6 +88,7 @@ export async function buildApp(deps: Deps, options: { logger?: boolean } = {}) {
       await receiptRoutes(v1, deps);
       await partnerRoutes(v1, deps);
       await feedbackRoutes(v1, deps);
+      await likeRoutes(v1, deps);
       await walletRoutes(v1, deps);
       await notificationRoutes(v1, deps);
     },

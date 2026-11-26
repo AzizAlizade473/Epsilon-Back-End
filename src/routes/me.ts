@@ -7,6 +7,7 @@ import type { Deps } from '../context.js';
 import {
   authIdentities,
   devices,
+  likes,
   notificationPreferences,
   notifications,
   otpChallenges,
@@ -79,6 +80,7 @@ export async function meRoutes(app: FastifyInstance, deps: Deps) {
       await tx.update(sessions).set({ revokedAt: now }).where(eq(sessions.userId, auth.userId));
       await tx.delete(authIdentities).where(eq(authIdentities.userId, auth.userId));
       await tx.delete(devices).where(eq(devices.userId, auth.userId));
+      await tx.delete(likes).where(eq(likes.userId, auth.userId));
       await tx.delete(notifications).where(eq(notifications.userId, auth.userId));
       await tx.delete(notificationPreferences).where(eq(notificationPreferences.userId, auth.userId));
       // Sign-in challenges carry the phone (and e-mail) but no user id.
