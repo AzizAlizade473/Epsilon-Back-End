@@ -18,7 +18,8 @@ GRANT USAGE ON SCHEMA public TO epsilon_admin_ro;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO epsilon_admin_ro;
 
 -- ... except the ones holding secrets, which get no access or a column list without the secret.
-REVOKE ALL ON otp_challenges, idempotency_keys, admin_sessions FROM epsilon_admin_ro;
+-- (scan_attempts: customers' scanned codes; the dashboard does not read it.)
+REVOKE ALL ON otp_challenges, idempotency_keys, admin_sessions, scan_attempts FROM epsilon_admin_ro;
 
 REVOKE SELECT ON sessions FROM epsilon_admin_ro;            -- refresh_token_hash
 GRANT SELECT (id, user_id, family_id, authenticated_at, expires_at, revoked_at, created_at) ON sessions TO epsilon_admin_ro;

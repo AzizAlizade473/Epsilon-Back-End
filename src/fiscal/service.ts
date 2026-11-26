@@ -1,8 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 
-import type { Config } from '../config.js';
 import type { Db, Tx } from '../db/client.js';
-import { fiscalCashbackClaims, fiscalReceipts, purchaseItems, purchases, users } from '../db/schema.js';
+import { fiscalCashbackClaims, fiscalReceipts, purchaseItems, purchases } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { sha256 } from '../lib/crypto.js';
 import { classifyMerchant, type Classification, type SectorAdvisor } from './classify.js';
@@ -259,12 +258,11 @@ export type Eligibility = {
     | 'UNSUPPORTED_MERCHANT_CATEGORY'
     | 'MERCHANT_CATEGORY_UNKNOWN'
     | 'NOT_EPSILON_PARTNER'
-    | 'VERIFICATION_REQUIRED'
-    | 'PHONE_NOT_VERIFIED';
+    | 'VERIFICATION_REQUIRED';
 };
 
 /** Backend-only decision: only HoReCa may be rated; only active partners pay cashback. */
-export function eligibility(fiscal: FiscalRow, user: typeof users.$inferSelect, config: Config): Eligibility {
+export function eligibility(fiscal: FiscalRow): Eligibility {
   if (fiscal.sector === 'unknown') return { ratingAllowed: false, cashbackAllowed: false, reason: 'MERCHANT_CATEGORY_UNKNOWN' };
   if (fiscal.sector !== 'horeca') return { ratingAllowed: false, cashbackAllowed: false, reason: 'UNSUPPORTED_MERCHANT_CATEGORY' };
   const bps = (fiscal.classificationEvidence as { cashbackBps?: number }).cashbackBps ?? 0;
@@ -272,8 +270,6 @@ export function eligibility(fiscal: FiscalRow, user: typeof users.$inferSelect, 
   // Trust policy: a customer's image is enough to rate, never enough to pay money.
   if (Object.values(IMAGE_PROVIDERS).includes(fiscal.provider))
     return { ratingAllowed: true, cashbackAllowed: false, reason: 'VERIFICATION_REQUIRED' };
-  if (config.REQUIRE_PHONE_VERIFICATION && !user.phoneVerifiedAt)
-    return { ratingAllowed: true, cashbackAllowed: false, reason: 'PHONE_NOT_VERIFIED' };
   return { ratingAllowed: true, cashbackAllowed: true, reason: null };
 }
 

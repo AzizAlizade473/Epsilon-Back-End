@@ -77,8 +77,14 @@ export function parseFiscalQr(raw: string): FiscalRef | null {
   return { issuer: 'e-kassa', fiscalId: id.slice(0, FISCAL_ID_LENGTH), document: id };
 }
 
+/** A Fiscal ID typed by hand (spaces ignored). Case is kept: real IDs are mixed-case. */
+export function typedFiscalRef(raw: string): FiscalRef | null {
+  const text = raw.replace(/\s/g, '');
+  return DOC.test(text) ? { issuer: 'e-kassa', fiscalId: text.slice(0, FISCAL_ID_LENGTH), document: text } : null;
+}
+
 /** The official e-kassa verification page for a parsed QR (full document identifier). */
-export const officialVerificationUrl = (ref: FiscalRef) =>
+export const officialVerificationUrl = (ref: Pick<FiscalRef, 'document'>) =>
   `https://monitoring.e-kassa.gov.az/#/index?doc=${encodeURIComponent(ref.document)}`;
 
 /** For logs and responses: never print a whole fiscal ID. */

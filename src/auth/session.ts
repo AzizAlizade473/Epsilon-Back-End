@@ -6,13 +6,21 @@ import { randomUUID } from 'node:crypto';
 import type { AuthContext, Deps } from '../context.js';
 import type { Db, Tx } from '../db/client.js';
 import { sessions, users } from '../db/schema.js';
-import { unauthorized } from '../errors.js';
+import { ApiError, unauthorized } from '../errors.js';
 import { randomToken, sha256 } from '../lib/crypto.js';
 
 const ISSUER = 'epsilon-api';
 const AUDIENCE = 'epsilon-app';
 const secs = (d: Date) => Math.floor(d.getTime() / 1000);
 const jwtKey = (deps: Deps) => new TextEncoder().encode(deps.config.JWT_SECRET);
+
+/** Account deletion and e-mail changes need a sign-in (OTP or Google) within this window. */
+const RECENT_AUTH_MS = 10 * 60_000;
+
+export function requireRecentAuth(deps: Deps, auth: AuthContext) {
+  if (deps.now().getTime() - auth.authenticatedAt.getTime() > RECENT_AUTH_MS)
+    throw new ApiError(403, 'REAUTH_REQUIRED', 'Sign in again to continue');
+}
 
 export type SessionJson = { accessToken: string; refreshToken: string; expiresAt: string };
 

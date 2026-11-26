@@ -2,7 +2,7 @@ import { buildApp } from './app.js';
 import type { Deps } from './context.js';
 import { googleVerifier } from './auth/google.js';
 import { consoleSms, disabledSms } from './auth/sms.js';
-import { gmailOtp } from './auth/email-otp.js';
+import { mailer } from './mail/mailer.js';
 import { buildAdminApp, defaultStaticDir } from './admin/routes.js';
 import { loadConfig } from './config.js';
 import { connect } from './db/client.js';
@@ -19,12 +19,9 @@ const deps: Deps = {
     config,
     push: expoPush,
     google: googleVerifier(config.GOOGLE_CLIENT_IDS.split(',').map((s) => s.trim()).filter(Boolean)),
-    sms:
-      config.SMS_PROVIDER === 'gmail'
-        ? gmailOtp({ GMAIL_USER: config.GMAIL_USER!, GMAIL_APP_PASSWORD: config.GMAIL_APP_PASSWORD! })
-        : config.SMS_PROVIDER === 'console'
-          ? consoleSms
-          : disabledSms,
+    // With SMS_PROVIDER=gmail phone codes go through `mail`, so `sms` is never called.
+    sms: config.SMS_PROVIDER === 'console' ? consoleSms : disabledSms,
+    mail: mailer(config),
     now: () => new Date(),
     // No authorised e-kassa integration exists yet. `fixture` serves local test receipts only.
     fiscal: config.FISCAL_PROVIDER === 'fixture' ? fixtureProvider(loadFixtureDir('private-fixtures/fiscal')) : unavailableProvider,

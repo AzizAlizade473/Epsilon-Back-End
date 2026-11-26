@@ -16,7 +16,7 @@ export async function catalogRoutes(app: FastifyInstance, deps: Deps) {
   app.get('/config', async () => ({
     minAppVersion: deps.config.MIN_APP_VERSION,
     minAge: deps.config.MIN_AGE,
-    requirePhoneVerification: deps.config.REQUIRE_PHONE_VERIFICATION,
+    requirePhoneVerification: false, // installed apps require the field
   }));
 
   app.get('/restaurants', { config: { auth: true } }, async (request) => {

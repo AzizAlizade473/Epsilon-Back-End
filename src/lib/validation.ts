@@ -25,6 +25,12 @@ export const phoneSchema = z
   .pipe(z.string().regex(/^(50|51|55|70|77|99|10|60)\d{7}$/))
   .transform((digits) => `+994${digits}`);
 
+/** Language of an unauthenticated caller (new account, e-mailed code). */
+export function languageFrom(header: string | undefined): 'az' | 'en' | 'ru' {
+  const tag = header?.slice(0, 2).toLowerCase();
+  return tag === 'en' || tag === 'ru' ? tag : 'az';
+}
+
 export const otpCodeSchema = z.string().regex(/^\d{6}$/);
 export const intentSchema = z.enum(['login', 'register']).optional();
 export const idParam = z.object({ id: z.uuid() }).strict();
@@ -60,8 +66,9 @@ export function decodeTimeCursor(cursor: string | undefined): [Date, string] | n
   return [at, after[1]];
 }
 
-/** Optional inbox for an e-mailed login code (SMS_PROVIDER=gmail); stored lower-case. */
-export const emailSchema = z.string().trim().toLowerCase().email().max(254).optional();
+/** The one e-mail normalisation (identity subject, `users.email`, challenges): trimmed, lower case. */
+export const emailAddress = z.string().trim().toLowerCase().email().max(254);
+export const emailSchema = emailAddress.optional();
 
 /** `ILIKE` pattern matching `q` literally anywhere (wildcards escaped). */
 export const likePattern = (q: string) => `%${q.replace(/[\\%_]/g, '\\$&')}%`;

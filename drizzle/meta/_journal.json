@@ -57,6 +57,27 @@
       "when": 1795681315668,
       "tag": "0007_oval_king_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795710664552,
+      "tag": "0008_email_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1795711403769,
+      "tag": "0009_scan_activity_replies",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795712427266,
+      "tag": "0010_brief_joshua_kane",
+      "breakpoints": true
     }
   ]
 }

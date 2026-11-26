@@ -68,6 +68,68 @@ export function ReviewFeed({ items }: { items: Review[] }) {
   );
 }
 
+type Reply = NonNullable<z.infer<typeof reviewDetailSchema>['reply']>;
+
+/** The restaurant's reply and the author's reports. Hiding follows the review moderation rules. */
+function ReplyPanel({ id, reply }: { id: string; reply: Reply }) {
+  const { t } = useTranslation();
+  const { can } = useAuth();
+  const qc = useQueryClient();
+  const [confirm, setConfirm] = useState(false);
+  const hidden = reply.status === 'hidden';
+  const moderate = useMutation({
+    mutationFn: (reason: string) => api('POST', `/reviews/${id}/reply/moderate`, z.unknown(), { body: { hidden: !hidden, reason } }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['api'] }),
+  });
+  return (
+    <section className="review" aria-label={t('reply.title')}>
+      <header>
+        <strong>{t('reply.title')}</strong>
+        <span className="review-meta">{reply.restaurant}</span>
+        <time className="muted num" dateTime={reply.updatedAt}>
+          {fmtDateTime(reply.updatedAt)}
+        </time>
+      </header>
+      <p className="review-text">{reply.body}</p>
+      {reply.reports.length > 0 && (
+        <>
+          <p className="muted">{t('reply.reportCount', { count: reply.reports.length })}</p>
+          <ul>
+            {reply.reports.map((x) => (
+              <li key={x.createdAt}>
+                {x.reason} <span className="muted num">{fmtDateTime(x.createdAt)}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <footer>
+        <Badge tone={hidden ? 'warn' : 'muted'}>{t(`reply.status.${reply.status}`)}</Badge>
+      </footer>
+      {can('reviews:moderate') && reply.status !== 'deleted' && (
+        <>
+          <button type="button" className={hidden ? 'btn' : 'btn btn-danger'} onClick={() => setConfirm(true)}>
+            {hidden ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
+            {hidden ? t('reply.unhide') : t('reply.hide')}
+          </button>
+          <ConfirmDialog
+            open={confirm}
+            onClose={() => setConfirm(false)}
+            title={hidden ? t('reply.unhideTitle') : t('reply.hideTitle')}
+            body={t('reply.moderateBody')}
+            confirmLabel={hidden ? t('reply.unhide') : t('reply.hide')}
+            needReason
+            danger={!hidden}
+            onConfirm={async (reason) => {
+              await moderate.mutateAsync(reason);
+            }}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
 /** Review detail drawer. Moderation is permission-gated, needs a reason, and never edits text. */
 export function ReviewDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
   const { t } = useTranslation();
@@ -102,6 +164,7 @@ export function ReviewDrawer({ id, onClose }: { id: string | null; onClose: () =
                     </>
                   )}
                 </dl>
+                {r.reply && <ReplyPanel id={r.id} reply={r.reply} />}
                 {can('reviews:moderate') && (
                   <>
                     <button type="button" className={hidden ? 'btn' : 'btn btn-danger'} onClick={() => setConfirm(true)}>

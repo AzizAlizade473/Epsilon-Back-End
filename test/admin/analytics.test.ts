@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { eq, inArray } from 'drizzle-orm';
-import { adminAudit, authIdentities, likes, purchases, users } from '../../src/db/schema.js';
+import { adminAudit, authIdentities, likes, purchases, replyReports, reviewReplies, users } from '../../src/db/schema.js';
 import { csvCell, maskEmail, maskId, maskPhone } from '../../src/admin/mask.js';
 import * as S from '../../admin/src/api/schemas.js';
 import { FILTER_CASES } from '../../admin/src/lib/filters.js';
@@ -250,6 +250,31 @@ describe('admin analytics', async () => {
     expect(users.text).not.toContain('aziz.secret');
     expect((await analyst('GET', '/export/secrets.csv')).status).toBe(404);
     expect((await t.db.select().from(adminAudit)).filter((a) => a.action === 'export')).toHaveLength(2);
+  });
+
+  it('restaurant replies and reports are listed, hidden and restored with an audit trail', async () => {
+    const at = new Date('2026-11-13T08:00:00Z');
+    const [reply] = await t.db
+      .insert(reviewReplies)
+      .values({ feedbackId: data.fb3.id, restaurantId: data.r1.id, authorUserId: data.u2.id, body: 'Sorry about that', updatedAt: at })
+      .returning();
+    await t.db.insert(replyReports).values({ replyId: reply!.id, reporterUserId: data.u1.id, reason: 'rude' });
+    const list = await analyst('GET', '/reviews?reply=reported');
+    expect(S.reviewsSchema.parse(list.body).items.map((i) => [i.id, i.reply])).toEqual([[data.fb3.id, { status: 'published', reportCount: 1 }]]);
+    expect((await analyst('GET', '/reviews?reply=any')).body.items).toHaveLength(1);
+    const detail = S.reviewDetailSchema.parse((await analyst('GET', `/reviews/${data.fb3.id}`)).body);
+    expect(detail.reply).toMatchObject({ status: 'published', body: 'Sorry about that', restaurant: expect.stringContaining('Dolma House'), reports: [{ reason: 'rude' }] });
+
+    const url = `/reviews/${data.fb3.id}/reply/moderate`;
+    expect((await analyst('POST', url, { body: { hidden: true, reason: 'abusive' } })).status).toBe(403);
+    expect((await ops('POST', url, { body: { hidden: true } })).status).toBe(422);
+    expect((await ops('POST', `/reviews/${data.fb1.id}/reply/moderate`, { body: { hidden: true, reason: 'abusive' } })).status).toBe(404);
+    expect((await ops('POST', url, { body: { hidden: true, reason: 'abusive' } })).status).toBe(200);
+    expect((await analyst('GET', `/reviews/${data.fb3.id}`)).body.reply.status).toBe('hidden');
+    expect((await ops('POST', url, { body: { hidden: false, reason: 'fine after all' } })).status).toBe(200);
+    const entries = (await t.db.select().from(adminAudit)).filter((a) => a.entityType === 'review_reply');
+    expect(entries.map((e) => e.action)).toEqual(['reply.hide', 'reply.unhide']);
+    await t.db.delete(reviewReplies);
   });
 
   it('moderation needs a reason, is audited, reversible, and hidden reviews leave aggregates (the author still sees theirs)', async () => {

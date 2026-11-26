@@ -10,6 +10,7 @@ import { loadConfig } from '../src/config.js';
 import type { Db } from '../src/db/client.js';
 import * as schema from '../src/db/schema.js';
 import { ApiError } from '../src/errors.js';
+import type { Mail } from '../src/mail/template.js';
 import type { PushMessage } from '../src/notifications/push.js';
 
 /** Fresh in-memory Postgres + app per test file. Clock and SMS are controllable. */
@@ -31,6 +32,8 @@ export async function setup(
   const clock = { now: new Date('2026-11-13T10:00:00.000Z') };
   const sent: { phone: string; code: string; email?: string }[] = [];
   const pushed: PushMessage[] = [];
+  const mails: Mail[] = [];
+  const mailDown = { value: false };
   /** Tokens the fake push service reports as DeviceNotRegistered. */
   const deadTokens = new Set<string>();
   const push: Deps['push'] = async (messages) => {
@@ -45,7 +48,12 @@ export async function setup(
     now: () => new Date(clock.now),
     ...extra,
     push,
-    sms: async (phone, code, email) => void sent.push({ phone, code, email }),
+    sms: async (phone, code) => void sent.push({ phone, code }),
+    mail: async (mail) => {
+      if (mailDown.value) throw new ApiError(503, 'EMAIL_DELIVERY_FAILED');
+      mails.push(mail);
+      if (mail.kind === 'otp') sent.push({ phone: mail.phone ?? '', code: mail.code, email: mail.to });
+    },
     google: async (idToken) => {
       const identity = googleAccounts.get(idToken);
       if (!identity) throw new ApiError(400, 'SOCIAL_TOKEN_INVALID');
@@ -74,5 +82,5 @@ export async function setup(
     return res.body;
   }
 
-  return { app, db, client, config, clock, advance, sent, push, pushed, deadTokens, googleAccounts, call, signInPhone };
+  return { app, db, client, config, clock, advance, sent, mails, mailDown, push, pushed, deadTokens, googleAccounts, call, signInPhone };
 }

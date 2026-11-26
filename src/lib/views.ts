@@ -1,7 +1,6 @@
 /** Database rows → the exact JSON shapes the app validates (src/services/contracts there). */
-import { and, asc, count, eq } from 'drizzle-orm';
+import { and, asc, count, eq, ne } from 'drizzle-orm';
 
-import type { Config } from '../config.js';
 import type { Db, Tx } from '../db/client.js';
 import { IMAGE_PROVIDERS, claimedLines, eligibility } from '../fiscal/service.js';
 import type { FiscalDocument } from '../fiscal/document.js';
@@ -23,9 +22,9 @@ type Conn = Db | Tx;
 type UserRow = typeof users.$inferSelect;
 type RestaurantRow = typeof restaurants.$inferSelect;
 
-export function nextStep(user: UserRow, config: Config): 'profile' | 'phone' | 'home' {
-  if (!user.firstName || !user.lastName || !user.birthDate) return 'profile';
-  return config.REQUIRE_PHONE_VERIFICATION && !user.phoneVerifiedAt ? 'phone' : 'home';
+/** Phone is optional: only missing profile fields stand between sign-in and home. */
+export function nextStep(user: UserRow): 'profile' | 'home' {
+  return !user.firstName || !user.lastName || !user.birthDate ? 'profile' : 'home';
 }
 
 export async function loadUser(conn: Conn, userId: string): Promise<UserRow> {
@@ -38,7 +37,8 @@ export async function userView(conn: Conn, user: UserRow) {
   const identities = await conn
     .select()
     .from(authIdentities)
-    .where(eq(authIdentities.userId, user.id))
+    // E-mail identities are served by GET /me/emails: installed apps reject an unknown provider here.
+    .where(and(eq(authIdentities.userId, user.id), ne(authIdentities.provider, 'email')))
     .orderBy(asc(authIdentities.createdAt));
   return {
     id: user.id,
@@ -65,10 +65,6 @@ export function restaurantView(r: Pick<RestaurantRow, 'id' | 'name' | 'logoUrl'>
   return { id: r.id, name: r.name, logoUrl: r.logoUrl, branchCount: branchTotal };
 }
 
-export function rewardEligible(user: UserRow, config: Config): boolean {
-  return !config.REQUIRE_PHONE_VERIFICATION || user.phoneVerifiedAt !== null;
-}
-
 /** How each source obtained the receipt (names as used in reports and the app). */
 const ACQUISITION: Record<string, 'partner_pos_verified' | 'printed_receipt_ocr' | 'customer_supplied_official_image' | 'test_fixture'> = {
   partner_pos: 'partner_pos_verified',
@@ -78,7 +74,7 @@ const ACQUISITION: Record<string, 'partner_pos_verified' | 'printed_receipt_ocr'
 };
 
 /** Receipt projection for its owner. Throws NOT_FOUND unless `userId` claimed it. */
-export async function receiptView(conn: Conn, purchaseId: string, user: UserRow, config: Config, now: Date) {
+export async function receiptView(conn: Conn, purchaseId: string, user: UserRow, now: Date) {
   const [row] = await conn
     .select({ purchase: purchases, branch: branches, restaurant: restaurants, fiscal: fiscalReceipts })
     .from(purchases)
@@ -98,12 +94,13 @@ export async function receiptView(conn: Conn, purchaseId: string, user: UserRow,
   const expired = row.purchase.expiresAt <= now || row.purchase.status !== 'open';
   const fiscal = row.fiscal;
   const doc = fiscal ? (fiscal.document as FiscalDocument) : null;
-  const rules = fiscal ? eligibility(fiscal, user, config) : null;
+  const rules = fiscal ? eligibility(fiscal) : null;
   const claimed = fiscal ? await claimedLines(conn, fiscal.id) : new Set<number>();
   const bps = fiscal
     ? ((fiscal.classificationEvidence as { cashbackBps?: number }).cashbackBps ?? 0)
     : (row.restaurant?.cashbackBps ?? 0);
-  const rewardsOn = fiscal ? rules!.cashbackAllowed : rewardEligible(user, config);
+  // Every signed-in account has a verified identity (e-mail, Google or phone): only the receipt decides.
+  const rewardsOn = rules ? rules.cashbackAllowed : true;
   let hint = 0;
   const itemViews = items.map(({ item, rating, feedbackId }) => {
     const canRate = !expired && rating === null && (rules?.ratingAllowed ?? true);

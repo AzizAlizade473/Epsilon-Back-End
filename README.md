@@ -18,7 +18,7 @@ from there, or from `EPSILON_APP_DIR` if the app lives elsewhere.
 | HTTP server  | Node.js 22, TypeScript, Fastify                              |
 | Validation   | Zod. Every body, query and path parameter is checked; unknown fields are rejected |
 | Database     | PostgreSQL, Drizzle ORM, SQL migrations in `drizzle/`        |
-| Auth         | Phone OTP (HMAC-hashed codes), Google ID-token check, JWT access tokens and rotating refresh tokens (stored as SHA-256 hashes) |
+| Auth         | E-mail OTP, phone OTP (HMAC-hashed codes), Google ID-token check, JWT access tokens and rotating refresh tokens (stored as SHA-256 hashes) |
 | Tests        | Vitest with PGlite, an in-process Postgres, so tests need no database install |
 
 ## Run it locally
@@ -63,8 +63,10 @@ The seed adds three fictional restaurants with branches and menus, plus demo
 purchase codes `DEMO-0001`, `DEMO-0002`, `DEMO-0003` and `DEMO-EXPIRED`. Type a
 code on the app's "enter code" screen.
 
-**OTP codes in development:** no SMS is sent. The code is printed in the
-server terminal as `[dev-sms] OTP for +994…: 123456`.
+**OTP codes in development:** no SMS is sent. A phone code is printed in the
+server terminal as `[dev-sms] OTP for +994…: 123456`. An e-mail code goes to the
+configured mail account's recipient; with no mail account it is printed as
+`[dev-mail] code for …: 123456`.
 
 ## See the data (accounts, logins, wallet)
 
@@ -77,8 +79,8 @@ browse, filter and edit rows:
 
 | Table             | What is in it                                                 |
 | ----------------- | ------------------------------------------------------------- |
-| `users`           | One row per account: phone, email, name, birth date           |
-| `auth_identities` | How each account signs in: `phone` or `google` (+ Gmail address) |
+| `users`           | One row per account: primary email, optional phone, name, birth date |
+| `auth_identities` | How each account signs in: `email` (verified address), `google` or `phone` |
 | `sessions`        | Logins. One row per refresh token; `revoked_at` set = logged out |
 | `ledger_entries`  | Wallet: every cashback credit                                 |
 | `feedback`        | Ratings and comments                                          |
@@ -139,11 +141,14 @@ Two limits on the app side:
 | `POST /auth/otp/request`, `/auth/otp/verify`, `/auth/google`, `/auth/refresh` | public |
 | `POST /auth/logout`                                          | bearer |
 | `GET / PATCH / DELETE /me`                                   | bearer |
-| `POST /me/phone/otp/request`, `/me/phone/otp/verify`         | bearer |
+| `POST /me/phone/otp/request`, `/me/phone/otp/verify`, `DELETE /me/phone` | bearer |
+| `GET /me/emails`, `POST /me/emails/request`, `/me/emails/verify`, `DELETE /me/emails/pending`, `/me/emails/:email` | bearer |
 | `GET / PUT /me/notification-settings`, `POST /devices`       | bearer |
 | `GET /restaurants`, `/restaurants/:id`                       | bearer |
 | `POST /receipts/resolve` (partner code or e-kassa fiscal QR), `GET /receipts`, `GET /receipts/:id` | bearer |
-| `POST / GET /feedback`                                       | bearer |
+| `POST / GET /feedback` (`?include=reply`), `POST /feedback/:id/reply/report` | bearer |
+| `GET /activity/scans`                                        | bearer |
+| `GET /staff/restaurants`, `/staff/restaurants/:id/reviews`, `PUT / DELETE /staff/reviews/:feedbackId/reply` | bearer, restaurant staff |
 | `GET /wallet`, `/wallet/transactions`, `/wallet/transactions/:id` | bearer |
 | `PUT / DELETE /likes/:kind/:targetId`, `GET /likes`, `POST /likes/state` | bearer |
 
@@ -155,6 +160,16 @@ always sends:
 
 - The same key with the same body replays the stored response.
 - The same key with a different body returns 422 and changes nothing.
+
+## Restaurant replies
+
+Restaurant staff use the normal app and account. Only Epsilon grants access, to an
+account that has verified the e-mail:
+
+```
+npm run staff:add -- <email> <restaurantId>
+npm run staff:remove -- <email> <restaurantId>
+```
 
 ## Fiscal (e-kassa) receipts
 
@@ -176,18 +191,30 @@ Status and the manual testing guide: `docs/FISCAL_RECEIPTS.md` in the app repo.
 ## How the important rules are enforced
 
 - **Logins:** OTP codes are stored only as HMAC hashes. A code expires after 2
-  minutes and allows 5 attempts. Each phone gets one code per 60 s and at most
-  5 per hour. Each IP gets 10 auth calls per minute.
+  minutes, allows 5 attempts, works once, and a newer code replaces it. Each
+  phone or e-mail gets one code per 60 s and at most 5 per hour (also per
+  signed-in user); e-mailed codes have a daily cap. Each IP gets 10 auth calls
+  per minute. A code that cannot be mailed is not stored
+  (`EMAIL_DELIVERY_FAILED`).
 - **Sessions:** Access tokens are 15-minute JWTs. Refresh tokens are random
   values stored as SHA-256 hashes and rotate on every refresh. Reusing an old
   refresh token revokes the whole session family. Logout and deletion revoke
   the session server-side.
-- **Account linking:** There is no linking by email. A phone is linked only by
-  OTP from inside a signed-in account. Database unique constraints make each
-  phone and each Google account belong to exactly one user.
+- **E-mail identity:** E-mail is the primary identity; a phone is optional
+  everywhere. An account may hold several verified addresses (one primary,
+  `users.email`); each address belongs to at most one account. Addresses are
+  trimmed and lower-cased everywhere. A Google or delivered phone code records
+  its address only when no other account holds it. Migration
+  `0008_email_identity` backfills proven, unshared addresses.
+- **Account linking:** Accounts are never linked or merged by email. A Google
+  sign-in whose verified address is another account's e-mail identity gets its
+  own account and learns nothing about the other one. A phone or another e-mail
+  is added only by OTP from inside a signed-in account; adding or removing an
+  e-mail needs a sign-in within the last 10 minutes, and the replaced primary
+  address is notified. The last sign-in method cannot be removed.
 - **Account deletion:** You must have signed in within the last 10 minutes.
-  Deletion erases the name, phone, email and birth date, revokes all sessions,
-  and frees the phone. Feedback and ledger rows stay, attached to the anonymised
+  Deletion erases the name, phone, emails and birth date, revokes all sessions,
+  and frees the phone and e-mail addresses. Feedback and ledger rows stay, attached to the anonymised
   user.
 - **Money:** All amounts are integer qəpik. The wallet is an append-only
   `ledger_entries` table, and the balance is always `SUM` of the confirmed rows.
@@ -200,8 +227,11 @@ Status and the manual testing guide: `docs/FISCAL_RECEIPTS.md` in the app repo.
 ## Placeholders that need an owner decision
 
 - **Reward rule:** each restaurant's `cashback_bps` of the rated line price,
-  confirmed immediately (`src/lib/money.ts`). There is no reward when
-  `REQUIRE_PHONE_VERIFICATION=true` and the user has no verified phone.
+  confirmed immediately (`src/lib/money.ts`). No phone is needed: any verified
+  sign-in identity qualifies, which makes extra accounts cheaper than before.
+  Each fiscal receipt line still pays only once.
+- **Mail domain:** set up SPF, DKIM and DMARC for the sending domain before
+  using `MAIL_FROM` on it.
 - **SMS provider:** only the dev console sender exists. Add a real sender in
   `src/auth/sms.ts`, for example Twilio, before production. Production refuses
   to start with `SMS_PROVIDER=console`.

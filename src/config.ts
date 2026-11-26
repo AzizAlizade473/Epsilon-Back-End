@@ -21,18 +21,25 @@ const schema = z
     /** Comma-separated reverse-proxy addresses whose X-Forwarded-For is trusted (e.g. `127.0.0.1` behind Caddy).
      * Empty = the socket address is the client. Without it every client behind the proxy shares one rate-limit budget. */
     TRUST_PROXY: z.string().default(''),
-    /** `console` prints OTP codes to the server log (development only). */
-    /** `gmail`: demo only, login codes are e-mailed to the account owner instead of sent by SMS. */
+    /** Phone codes. `console` prints them to the server log (development only).
+     * `gmail`: demo only, they are e-mailed (SMTP_* or Gmail) instead of sent by SMS. */
     SMS_PROVIDER: z.enum(['console', 'gmail', 'none']).default('console'),
     GMAIL_USER: z.string().email().optional(),
     /** A Google App Password (16 letters), never the account password. */
     GMAIL_APP_PASSWORD: z.string().min(16).optional(),
-    /** Cap on e-mailed login codes per 24 h, below Gmail's own sending limit (about 500 a day). */
+    /** Outgoing mail. Used when SMTP_HOST is set; otherwise GMAIL_USER/GMAIL_APP_PASSWORD.
+     * With neither, development prints e-mail codes to the log and production cannot send them. */
+    SMTP_HOST: z.string().min(1).optional(),
+    SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(587),
+    SMTP_USER: z.string().min(1).optional(),
+    SMTP_PASS: z.string().min(1).optional(),
+    /** Sender for SMTP, e.g. `Epsilon <info@epsilonup.com>`. The account must be allowed to send as it. */
+    MAIL_FROM: z.string().min(3).optional(),
+    /** Cap on e-mailed codes per 24 h, below the mail account's own limit (Gmail: about 500 a day). */
     OTP_EMAIL_MAX_PER_DAY: z.coerce.number().int().min(1).max(2000).default(400),
     // Must not exceed the app's current version (app.json), or every install is told to update.
     MIN_APP_VERSION: z.string().regex(/^\d+\.\d+\.\d+$/).default('0.1.0'),
     MIN_AGE: z.coerce.number().int().positive().default(16),
-    REQUIRE_PHONE_VERIFICATION: flag.default(true),
     /** Fiscal receipt source. `none` until an authorised e-kassa integration exists; `fixture` = test data, never production. */
     FISCAL_PROVIDER: z.enum(['none', 'fixture']).default('none'),
     /** Gemini business-sector advisor. Off by default: no call is made unless this is `true`. */
@@ -75,8 +82,11 @@ const schema = z
     }
     if (env.GEMINI_ENABLED && !env.GEMINI_API_KEY)
       ctx.addIssue({ code: 'custom', path: ['GEMINI_API_KEY'], message: 'GEMINI_ENABLED needs GEMINI_API_KEY' });
-    if (env.SMS_PROVIDER === 'gmail' && (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD))
-      ctx.addIssue({ code: 'custom', path: ['GMAIL_APP_PASSWORD'], message: 'SMS_PROVIDER=gmail needs GMAIL_USER and GMAIL_APP_PASSWORD' });
+    if (env.SMTP_HOST)
+      for (const key of ['SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'] as const)
+        if (!env[key]) ctx.addIssue({ code: 'custom', path: [key], message: 'SMTP_HOST needs SMTP_USER, SMTP_PASS and MAIL_FROM' });
+    if (env.SMS_PROVIDER === 'gmail' && !env.SMTP_HOST && (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD))
+      ctx.addIssue({ code: 'custom', path: ['GMAIL_APP_PASSWORD'], message: 'SMS_PROVIDER=gmail needs SMTP_* or GMAIL_USER and GMAIL_APP_PASSWORD' });
     if (env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'gmail')
       ctx.addIssue({ code: 'custom', path: ['SMS_PROVIDER'], message: 'e-mailed login codes are a demo, not allowed in production' });
     if (env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'console')

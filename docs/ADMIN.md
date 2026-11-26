@@ -108,8 +108,9 @@ non-partner fiscal merchants (never merged by similar names).
   Rankings require `minRatings` (default 3); sample size is always returned.
 
 ### Reviews
-- `GET /reviews?restaurant&dish&user&stars&from&to&dimension&sentiment&hasComment&edited&moderated&cursor&limit` → items `{ id, restaurant, dish, reviewer, rating, quickComments[], comment, createdAt, updatedAt, edited, moderation }`
-- `GET /reviews/:id` → review + receipt/dish context
+- `GET /reviews?restaurant&dish&user&stars&from&to&dimension&sentiment&hasComment&edited&moderated&reply=any|reported&cursor&limit` → items `{ id, restaurant, dish, reviewer, rating, quickComments[], comment, createdAt, updatedAt, edited, moderation, reply: { status: published|hidden|deleted, reportCount } | null }`
+- `GET /reviews/:id` → review + receipt/dish context; `reply: { status, body, restaurant, updatedAt, reports[{ reason, createdAt }] } | null`
+- `POST /reviews/:id/reply/moderate` `{ hidden: boolean, reason }` (perm `reviews:moderate`, audited; reversible; the restaurant cannot edit or re-publish a hidden reply)
 - `POST /reviews/:id/moderate` `{ hidden: boolean, reason }` (perm `reviews:moderate`, audited; reversible; hidden reviews are excluded from aggregates and from public lists; the text is never altered)
 
 ### Likes

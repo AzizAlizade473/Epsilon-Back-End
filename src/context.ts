@@ -2,6 +2,7 @@ import type { Config } from './config.js';
 import type { Db } from './db/client.js';
 import type { GoogleVerifier } from './auth/google.js';
 import type { SmsSender } from './auth/sms.js';
+import type { Mailer } from './mail/mailer.js';
 import type { SectorAdvisor } from './fiscal/classify.js';
 import type { FiscalProvider } from './fiscal/provider.js';
 import type { ReceiptImageReader } from './fiscal/gemini.js';
@@ -12,6 +13,7 @@ export type Deps = {
   config: Config;
   google: GoogleVerifier;
   sms: SmsSender;
+  mail: Mailer;
   push: PushSender;
   /** Injectable clock for tests. */
   now: () => Date;

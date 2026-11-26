@@ -6,7 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { z } from 'zod';
 
-import { adminSessions, adminUsers, feedback, restaurants } from '../db/schema.js';
+import { adminSessions, adminUsers, feedback, restaurants, reviewReplies } from '../db/schema.js';
 import { ApiError, apiErrorHandler, notFound } from '../errors.js';
 import { sha256 } from '../lib/crypto.js';
 import { parse } from '../lib/validation.js';
@@ -23,7 +23,7 @@ import {
 } from './queries/misc.js';
 import { likesQuery, likeStats, listLikes } from './queries/likes.js';
 import { cashbackSummary, idParam, ledgerQuery, listLedger, listReceipts, receiptDetail, receiptHealth, receiptsQuery } from './queries/receipts.js';
-import { listReviews, reviewRows, reviewsQuery, reviewView } from './queries/reviews.js';
+import { listReviews, replyDetail, reviewRows, reviewsQuery, reviewView } from './queries/reviews.js';
 import { overview } from './queries/overview.js';
 import { listUsers, userContact, userDetail, usersAnalytics, usersQuery } from './queries/users.js';
 import { staticHandler } from './static.js';
@@ -189,6 +189,7 @@ export async function buildAdminApp(deps: AdminDeps, options: { logger?: boolean
     const receipt = item ? await receiptDetail(ro, item.purchase_id) : null;
     return {
       ...reviewView(review),
+      reply: await replyDetail(ro, id),
       item: item ? { name: item.name, quantity: item.quantity, unitPriceMinor: item.unit_price_minor } : null,
       receipt: receipt && { id: receipt.id, importedAt: receipt.importedAt, fiscalIdMasked: receipt.fiscalIdMasked, totalMinor: receipt.totalMinor, merchant: receipt.merchant },
     };
@@ -210,6 +211,23 @@ export async function buildAdminApp(deps: AdminDeps, options: { logger?: boolean
         before: { hidden: before.hiddenAt !== null }, after: { hidden: body.hidden }, outcome: 'ok', ...requestMeta(request),
       });
       return { id, moderation: { hidden: body.hidden, reason: body.hidden ? body.reason : null, at: body.hidden ? at : null } };
+    });
+  });
+
+  // Hide or restore a restaurant's reply; its text is never altered.
+  app.post(`${P}/reviews/:id/reply/moderate`, { config: { perm: 'reviews:moderate' } }, async (request) => {
+    const { id } = parse(idParam, request.params);
+    const body = parse(z.object({ hidden: z.boolean(), reason: REASON }).strict(), request.body);
+    const at = now();
+    return db.transaction(async (tx) => {
+      const [before] = await tx.select({ hiddenAt: reviewReplies.hiddenAt }).from(reviewReplies).where(eq(reviewReplies.feedbackId, id)).for('update');
+      if (!before) throw notFound();
+      await tx.update(reviewReplies).set({ hiddenAt: body.hidden ? at : null }).where(eq(reviewReplies.feedbackId, id));
+      await audit(tx, {
+        adminId: admin(request).id, action: body.hidden ? 'reply.hide' : 'reply.unhide', entityType: 'review_reply', entityId: id, reason: body.reason,
+        before: { hidden: before.hiddenAt !== null }, after: { hidden: body.hidden }, outcome: 'ok', ...requestMeta(request),
+      });
+      return { id, reply: { hidden: body.hidden, at: body.hidden ? at : null } };
     });
   });
 

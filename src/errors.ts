@@ -9,12 +9,20 @@ export type ErrorCode =
   | 'SOCIAL_EMAIL_UNVERIFIED'
   | 'OTP_INVALID'
   | 'EMAIL_REQUIRED'
+  | 'PHONE_SIGNIN_UNAVAILABLE'
+  | 'REPLY_NOT_FOUND'
+  | 'REPLY_HIDDEN'
+  | 'REVIEW_HIDDEN'
   | 'FEEDBACK_NOT_FOUND'
   | 'NOTIFICATION_NOT_FOUND'
   | 'LIKE_TARGET_NOT_FOUND'
   | 'OTP_EXPIRED'
   | 'OTP_TOO_MANY'
   | 'PHONE_IN_USE'
+  | 'EMAIL_IN_USE'
+  | 'EMAIL_IS_PRIMARY'
+  | 'LAST_SIGN_IN_METHOD'
+  | 'EMAIL_DELIVERY_FAILED'
   | 'IDENTITY_ALREADY_LINKED'
   | 'RECEIPT_UNSUPPORTED'
   | 'RECEIPT_NOT_FOUND'
@@ -54,6 +62,10 @@ export class ApiError extends Error {
     this.name = 'ApiError';
   }
 }
+
+/** E-mailed codes only: a phone account without a saved e-mail has no inbox that proves its owner. */
+export const phoneSignInUnavailable = () =>
+  new ApiError(409, 'PHONE_SIGNIN_UNAVAILABLE', 'This number cannot sign in with a code. Use another sign-in method or contact support');
 
 export const unauthorized = () => new ApiError(401, 'UNAUTHORIZED', 'Authentication required');
 export const notFound = () => new ApiError(404, 'NOT_FOUND', 'Not found');

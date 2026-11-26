@@ -138,14 +138,14 @@ describe('feedback rewards and wallet ledger', () => {
     expect((await t.call('GET', '/wallet', { token: other })).body.balanceMinor).toBe(0);
   });
 
-  it('accepts feedback without reward when phone verification is required but missing', async () => {
+  it('pays an account that has a verified e-mail identity and no phone', async () => {
     t.googleAccounts.set('tok', { sub: 'g-9', email: 'g@example.com', emailVerified: true });
     const google = (await t.call('POST', '/auth/google', { body: { idToken: 'tok' } })).body.session.accessToken;
     const receipt = (await resolve('DEMO-0002', google)).body;
-    expect(receipt.rewardHint).toBeUndefined();
+    expect(receipt.rewardHint?.amountMinor).toBeGreaterThan(0);
     const res = await t.call('POST', '/feedback', { token: google, body: { receiptItemId: receipt.items[0].id, rating: 4 } });
-    expect(res.body.reward).toEqual({ status: 'none', amountMinor: null });
-    expect((await t.call('GET', '/wallet', { token: google })).body.balanceMinor).toBe(0);
+    expect(res.body.reward.status).toBe('confirmed');
+    expect((await t.call('GET', '/wallet', { token: google })).body.balanceMinor).toBe(res.body.reward.amountMinor);
   });
 
   it('rejects invalid ratings and unknown reason codes', async () => {

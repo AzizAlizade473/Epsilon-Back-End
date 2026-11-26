@@ -45,6 +45,7 @@ export const identityProvider = pgEnum('identity_provider', [
   'phone',
   'google',
   'apple',
+  'email',
 ]);
 
 export const authIdentities = pgTable(
@@ -55,7 +56,7 @@ export const authIdentities = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     provider: identityProvider('provider').notNull(),
-    providerUserId: text('provider_user_id').notNull(), // phone number or Google `sub`
+    providerUserId: text('provider_user_id').notNull(), // phone number, Google `sub` or normalised e-mail
     email: text('email'),
     emailVerified: boolean('email_verified').notNull().default(false),
     createdAt: createdAt(),
@@ -65,7 +66,8 @@ export const authIdentities = pgTable(
       t.provider,
       t.providerUserId,
     ),
-    uniqueIndex('auth_identities_user_provider_key').on(t.userId, t.provider),
+    // One phone and one Google account per user; any number of verified e-mails.
+    uniqueIndex('auth_identities_user_provider_key').on(t.userId, t.provider).where(sql`${t.provider} <> 'email'`),
   ],
 );
 
@@ -80,17 +82,22 @@ export const otpChallenges = pgTable(
   'otp_challenges',
   {
     id: id(),
-    phone: text('phone').notNull(),
+    phone: text('phone'), // null: an e-mail code, `email` is then what it proves
     purpose: otpPurpose('purpose').notNull(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
     codeHash: text('code_hash').notNull(), // HMAC-SHA256, never the code
-    email: text('email'), // where an e-mailed code went (SMS_PROVIDER=gmail); saved to a new account
+    email: text('email'), // where an e-mailed code went
+    ipHash: text('ip_hash'), // HMAC of the requester's address, for per-requester limits
+    makePrimary: boolean('make_primary').notNull().default(false), // adding an e-mail (purpose link)
     attempts: smallint('attempts').notNull().default(0),
     expiresAt: ts('expires_at').notNull(),
     consumedAt: ts('consumed_at'),
     createdAt: createdAt(),
   },
-  (t) => [index('otp_challenges_phone_created_idx').on(t.phone, t.createdAt)],
+  (t) => [
+    index('otp_challenges_phone_created_idx').on(t.phone, t.createdAt),
+    index('otp_challenges_email_created_idx').on(t.email, t.createdAt),
+  ],
 );
 
 /** One row per refresh token. Rotation revokes the old row and inserts a new
@@ -386,6 +393,94 @@ export const ledgerEntries = pgTable(
       'ledger_sign_check',
       sql`(${t.type} = 'earned' and ${t.amountMinor} > 0) or (${t.type} <> 'earned' and ${t.amountMinor} < 0)`,
     ),
+  ],
+);
+
+/** Restaurant accounts: ordinary users granted access by Epsilon only (npm run staff:add). */
+export const restaurantStaff = pgTable(
+  'restaurant_staff',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    restaurantId: uuid('restaurant_id')
+      .notNull()
+      .references(() => restaurants.id, { onDelete: 'cascade' }),
+    createdAt: createdAt(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.restaurantId] })],
+);
+
+/** One reply per review. Deleting and hiding only flag the row, so a hidden reply cannot be re-published by its author. */
+export const reviewReplies = pgTable(
+  'review_replies',
+  {
+    id: id(),
+    feedbackId: uuid('feedback_id')
+      .notNull()
+      .references(() => feedback.id, { onDelete: 'cascade' }),
+    restaurantId: uuid('restaurant_id')
+      .notNull()
+      .references(() => restaurants.id),
+    authorUserId: uuid('author_user_id')
+      .notNull()
+      .references(() => users.id),
+    body: text('body').notNull(),
+    createdAt: createdAt(),
+    updatedAt: ts('updated_at').notNull(),
+    deletedAt: ts('deleted_at'),
+    hiddenAt: ts('hidden_at'),
+  },
+  (t) => [
+    uniqueIndex('review_replies_feedback_key').on(t.feedbackId),
+    check('review_replies_body_check', sql`char_length(${t.body}) between 1 and 1000`),
+  ],
+);
+
+/** The review's author reporting the reply to it. */
+export const replyReports = pgTable(
+  'reply_reports',
+  {
+    id: id(),
+    replyId: uuid('reply_id')
+      .notNull()
+      .references(() => reviewReplies.id, { onDelete: 'cascade' }),
+    reporterUserId: uuid('reporter_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    reason: text('reason').notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    uniqueIndex('reply_reports_reply_reporter_key').on(t.replyId, t.reporterUserId),
+    check('reply_reports_reason_check', sql`char_length(${t.reason}) between 1 and 300`),
+  ],
+);
+
+// ---------------------------------------------------------------- scan activity
+
+/** The latest outcome per scanned receipt (or code) and user. Never images or raw errors. */
+export const scanAttempts = pgTable(
+  'scan_attempts',
+  {
+    id: id(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** `fiscal:<Fiscal ID>`, or `code:<SHA-256>` for anything else: a retry updates its own row. */
+    subject: text('subject').notNull(),
+    at: ts('at').notNull(),
+    status: text('status', { enum: ['success', 'failed'] }).notNull(),
+    reason: text('reason'),
+    retryable: boolean('retryable').notNull(),
+    /** The QR's full `doc` value, so its owner can retry. */
+    fiscalDocument: text('fiscal_document'),
+    receiptId: uuid('receipt_id').references(() => purchases.id),
+    restaurantName: text('restaurant_name'),
+  },
+  (t) => [
+    uniqueIndex('scan_attempts_user_subject_key').on(t.userId, t.subject),
+    index('scan_attempts_user_at_idx').on(t.userId, t.at),
   ],
 );
 

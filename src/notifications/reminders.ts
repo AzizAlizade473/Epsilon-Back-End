@@ -32,7 +32,7 @@ export async function sendMealReminders(deps: Pick<Deps, 'db' | 'config' | 'now'
   let sent = 0;
   for (const { purchase, fiscal, user } of candidates) {
     if (done.has(user.id)) continue;
-    if (fiscal && !eligibility(fiscal, user, deps.config).ratingAllowed) continue;
+    if (fiscal && !eligibility(fiscal).ratingAllowed) continue;
     const [unrated] = await deps.db
       .select({ n: sql<number>`count(*)::int` })
       .from(purchaseItems)

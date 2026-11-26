@@ -72,10 +72,20 @@ export const reviewSchema = z.looseObject({
   updatedAt: str,
   edited: z.boolean().nullish(),
   moderation,
+  reply: z.looseObject({ status: z.enum(['published', 'hidden', 'deleted']), reportCount: num }).nullish(),
 });
 export type Review = z.infer<typeof reviewSchema>;
 export const reviewsSchema = list(reviewSchema);
 export const reviewDetailSchema = reviewSchema.extend({
+  reply: z
+    .looseObject({
+      status: z.enum(['published', 'hidden', 'deleted']),
+      body: z.string(),
+      restaurant: str,
+      updatedAt: z.string(),
+      reports: z.array(z.object({ reason: z.string(), createdAt: z.string() })),
+    })
+    .nullish(),
   receipt: z.looseObject({ id: id.optional() }).nullish(),
   dishContext: z.looseObject({}).nullish(),
 });

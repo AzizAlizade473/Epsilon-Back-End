@@ -15,7 +15,7 @@ const yn = (t: (k: string) => string): [string, string][] => [['', t('common.any
 export function Component() {
   const { t } = useTranslation();
   const [sp, setSp] = useSearchParams();
-  const [f, setF] = useState({ stars: '', hasComment: '', edited: '', moderated: '', dimension: '', sentiment: '' });
+  const [f, setF] = useState({ stars: '', hasComment: '', edited: '', moderated: '', reply: '', dimension: '', sentiment: '' });
   const set = (k: keyof typeof f) => (v: string) => setF({ ...f, [k]: v });
   const p = usePaged('/reviews', reviewsSchema, f, { range: true });
   const open = sp.get('review');
@@ -33,6 +33,7 @@ export function Component() {
         <SelectField label={t('reviews.hasComment')} value={f.hasComment} onChange={set('hasComment')} options={yn(t)} />
         <SelectField label={t('reviews.edited')} value={f.edited} onChange={set('edited')} options={yn(t)} />
         <SelectField label={t('reviews.moderated')} value={f.moderated} onChange={set('moderated')} options={yn(t)} />
+        <SelectField label={t('reply.title')} value={f.reply} onChange={set('reply')} options={[['', t('common.any')], ['any', t('reply.any')], ['reported', t('reply.reported')]]} />
         <SelectField label={t('reviews.dimension')} value={f.dimension} onChange={set('dimension')} options={[['', t('common.any')], ...REVIEW_DIMENSIONS.map((d): [string, string] => [d, t(`dimension.${d}`)])]} />
         <SelectField label={t('reviews.sentiment')} value={f.sentiment} onChange={set('sentiment')} options={[['', t('common.any')], ['positive', t('common.positive')], ['neutral', t('common.neutral')], ['negative', t('common.negative')]]} />
       </Toolbar>
@@ -68,10 +69,12 @@ export function Component() {
                     id: 'flags',
                     header: t('common.status'),
                     hideSm: true,
-                    cell: (r) => !r.edited && !isHidden(r.moderation) ? <span className="muted">—</span> : (
+                    cell: (r) => !r.edited && !isHidden(r.moderation) && !r.reply ? <span className="muted">—</span> : (
                       <span className="chips-inline">
                         {r.edited && <Badge>{t('reviews.edited')}</Badge>}
                         {isHidden(r.moderation) && <Badge tone="warn">{t('reviews.hidden')}</Badge>}
+                        {r.reply && <Badge tone={r.reply.status === 'hidden' ? 'warn' : 'muted'}>{t(`reply.status.${r.reply.status}`)}</Badge>}
+                        {!!r.reply?.reportCount && <Badge tone="bad">{t('reply.reportCount', { count: r.reply.reportCount })}</Badge>}
                       </span>
                     ),
                   },
