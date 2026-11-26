@@ -92,6 +92,10 @@ describe('feedback rewards and wallet ledger', () => {
     const after = (await t.call('GET', `/receipts/${receipt.id}`, { token })).body;
     expect(after.items.find((i: { id: string }) => i.id === item.id)).toMatchObject({ canRate: false, rating: 5 });
     expect(after.rewardHint.amountMinor).toBe(302 - 145);
+    // Cashback per receipt is opt-in: absent by default, summed from the ledger when asked.
+    expect(after.cashback).toBeUndefined();
+    const withCashback = (await t.call('GET', `/receipts/${receipt.id}?include=cashback`, { token })).body;
+    expect(withCashback.cashback).toEqual({ earnedMinor: 145, pendingMinor: 0 });
 
     const reviews = (await t.call('GET', '/feedback', { token })).body;
     expect(reviews.items[0]).toMatchObject({ dishName: 'Creamy mushroom pasta', restaurantName: 'Bulvar Bistro', rating: 5, comment: 'Great' });

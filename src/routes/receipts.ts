@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import type { Deps } from '../context.js';
-import { branches, fiscalReceipts, purchaseItems, purchases, restaurants } from '../db/schema.js';
+import { branches, fiscalReceipts, ledgerEntries, purchaseItems, purchases, restaurants } from '../db/schema.js';
 import { ApiError } from '../errors.js';
 import { sha256 } from '../lib/crypto.js';
 import { idempotent } from '../lib/idempotency.js';
@@ -216,6 +216,17 @@ export async function receiptRoutes(app: FastifyInstance, deps: Deps) {
   app.get('/receipts/:id', { config: { auth: true } }, async (request) => {
     const { id } = parse(idParam, request.params);
     const user = await loadUser(deps.db, request.auth!.userId);
-    return receiptView(deps.db, id, user, deps.config, deps.now());
+    const view = await receiptView(deps.db, id, user, deps.config, deps.now());
+    // Opt-in so that installed apps with a strict response schema keep working.
+    if ((request.query as { include?: unknown }).include !== 'cashback') return view;
+    const [sum] = await deps.db
+      .select({
+        earned: sql<string>`coalesce(sum(${ledgerEntries.amountMinor}) filter (where ${ledgerEntries.status} = 'confirmed' and ${ledgerEntries.type} in ('earned', 'reversed')), 0)`,
+        pending: sql<string>`coalesce(sum(${ledgerEntries.amountMinor}) filter (where ${ledgerEntries.status} = 'pending'), 0)`,
+      })
+      .from(ledgerEntries)
+      .innerJoin(purchaseItems, eq(purchaseItems.id, ledgerEntries.purchaseItemId))
+      .where(and(eq(purchaseItems.purchaseId, id), eq(ledgerEntries.userId, user.id)));
+    return { ...view, cashback: { earnedMinor: Math.max(0, Number(sum?.earned ?? 0)), pendingMinor: Math.max(0, Number(sum?.pending ?? 0)) } };
   });
 }
